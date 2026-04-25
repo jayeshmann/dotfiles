@@ -1,0 +1,57 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
+      { "id": "sep1a", "type": "separator", "color": "hex:565F89", "character": " │ " },
+      { "id": "sesslbl", "type": "custom-text", "color": "hex:565F89", "customText": "Session " },
+      { "id": "sesspct", "type": "session-usage", "color": "hex:2AC3DE", "bold": true, "rawValue": true },
+      { "id": "sep1b", "type": "separator", "color": "hex:565F89", "character": " · " },
+      { "id": "reset", "type": "reset-timer", "color": "hex:F7768E", "rawValue": true },
+      { "id": "sep1c", "type": "separator", "color": "hex:565F89", "character": "   │   " },
+      { "id": "weeklylbl", "type": "custom-text", "color": "hex:565F89", "customText": "Weekly " },
+      { "id": "weeklypct", "type": "weekly-usage", "color": "hex:E0AF68", "bold": true, "rawValue": true },
+      { "id": "sep1d", "type": "separator", "color": "hex:565F89", "character": " · " },
+      { "id": "wreset", "type": "weekly-reset-timer", "color": "hex:FF9E64", "rawValue": true },
+      { "id": "flex1", "type": "flex-separator" },
+      { "id": "ctxlbl", "type": "custom-text", "color": "hex:565F89", "customText": "Ctx " },
+      { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 }
+    ],
+    [
+      { "id": "git", "type": "git-branch", "color": "hex:BB9AF7", "metadata": { "hideNoGit": "true" } },
+      { "id": "sep2a", "type": "separator", "color": "hex:565F89", "character": " " },
+      { "id": "gitch", "type": "git-changes", "color": "hex:E0AF68", "metadata": { "hideNoGit": "true" } },
+      { "id": "sep2b", "type": "separator", "color": "hex:565F89", "character": " " },
+      { "id": "gitpr", "type": "git-pr", "color": "hex:7AA2F7", "rawValue": true, "metadata": { "hideNoGit": "true" } },
+      { "id": "sep2c", "type": "separator", "color": "hex:565F89", "character": " " },
+      { "id": "wt", "type": "worktree-name", "color": "hex:BB9AF7", "rawValue": true },
+      { "id": "flex2", "type": "flex-separator" },
+      { "id": "ver", "type": "version", "color": "hex:565F89", "rawValue": true },
+      { "id": "sep2d", "type": "separator", "color": "hex:565F89", "character": " · " },
+      { "id": "uplbl", "type": "custom-text", "color": "hex:565F89", "customText": "Up " },
+      { "id": "uptime", "type": "session-clock", "color": "hex:7DCFFF", "rawValue": true }
+    ],
+    [
+      { "id": "model", "type": "model", "color": "hex:7DCFFF", "bold": true, "rawValue": true },
+      { "id": "sep3a", "type": "separator", "color": "hex:565F89", "character": " │ " },
+      { "id": "effort", "type": "custom-command", "color": "hex:FF9E64", "commandPath": "/home/jay/.claude/bin/effort-level.sh", "preserveColors": true, "timeout": 500 },
+      { "id": "flex3", "type": "flex-separator" },
+      { "id": "sid", "type": "claude-session-id", "color": "hex:565F89", "rawValue": true }
+    ]
+  ],
+  "flexMode": "full",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": false,
+    "separators": [""],
+    "separatorInvertBackground": [false],
+    "startCaps": [],
+    "endCaps": [],
+    "autoAlign": false,
+    "continueThemeAcrossLines": false
+  }
+}
