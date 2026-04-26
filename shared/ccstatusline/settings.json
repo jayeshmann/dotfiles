@@ -2,6 +2,8 @@
   "version": 3,
   "lines": [
     [
+      { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
+      { "id": "sep1pre", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "ctxlbl", "type": "custom-text", "color": "hex:565F89", "customText": "Ctx " },
       { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 },
       { "id": "sep1a", "type": "separator", "color": "hex:565F89", "character": " │ " },
@@ -16,8 +18,6 @@
       { "id": "wreset", "type": "weekly-reset-timer", "color": "hex:FF9E64", "rawValue": true }
     ],
     [
-      { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
-      { "id": "sep2pre", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "git", "type": "git-branch", "color": "hex:BB9AF7", "metadata": { "hideNoGit": "true" } },
       { "id": "sep2a", "type": "separator", "color": "hex:565F89", "character": " " },
       { "id": "gitch", "type": "git-changes", "color": "hex:E0AF68", "metadata": { "hideNoGit": "true" } },
