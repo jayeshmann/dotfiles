@@ -2,22 +2,22 @@
   "version": 3,
   "lines": [
     [
-      { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
+      { "id": "ctxlbl", "type": "custom-text", "color": "hex:565F89", "customText": "Ctx " },
+      { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 },
       { "id": "sep1a", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "sesslbl", "type": "custom-text", "color": "hex:565F89", "customText": "Session " },
       { "id": "sesspct", "type": "session-usage", "color": "hex:2AC3DE", "bold": true, "rawValue": true },
       { "id": "sep1b", "type": "separator", "color": "hex:565F89", "character": " · " },
       { "id": "reset", "type": "reset-timer", "color": "hex:F7768E", "rawValue": true },
-      { "id": "sep1c", "type": "separator", "color": "hex:565F89", "character": "   │   " },
+      { "id": "flex1", "type": "flex-separator" },
       { "id": "weeklylbl", "type": "custom-text", "color": "hex:565F89", "customText": "Weekly " },
       { "id": "weeklypct", "type": "weekly-usage", "color": "hex:E0AF68", "bold": true, "rawValue": true },
       { "id": "sep1d", "type": "separator", "color": "hex:565F89", "character": " · " },
-      { "id": "wreset", "type": "weekly-reset-timer", "color": "hex:FF9E64", "rawValue": true },
-      { "id": "flex1", "type": "flex-separator" },
-      { "id": "ctxlbl", "type": "custom-text", "color": "hex:565F89", "customText": "Ctx " },
-      { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 }
+      { "id": "wreset", "type": "weekly-reset-timer", "color": "hex:FF9E64", "rawValue": true }
     ],
     [
+      { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
+      { "id": "sep2pre", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "git", "type": "git-branch", "color": "hex:BB9AF7", "metadata": { "hideNoGit": "true" } },
       { "id": "sep2a", "type": "separator", "color": "hex:565F89", "character": " " },
       { "id": "gitch", "type": "git-changes", "color": "hex:E0AF68", "metadata": { "hideNoGit": "true" } },
