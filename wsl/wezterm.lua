@@ -19,6 +19,26 @@ config.harfbuzz_features = { 'calt=1', 'clig=1', 'liga=1' } -- ligatures on
 config.window_background_opacity = 0.97
 config.window_decorations = 'RESIZE'
 config.window_padding = { left = 8, right = 8, top = 6, bottom = 0 }
+
+-- ============================================================
+-- Active vs inactive emphasis
+-- ============================================================
+-- Inactive panes get desaturated and dimmed; the focused pane stays at full
+-- color/brightness. Tokyo Night already runs cool, so the active pane reads
+-- as the warm/bright one when several panes are split.
+config.inactive_pane_hsb = {
+  saturation = 0.55,
+  brightness = 0.55,
+}
+
+-- Make the seams between panes a vivid Tokyo Night magenta so the active
+-- region's borders are immediately visible.
+config.colors = {
+  split = '#bb9af7',
+  cursor_bg = '#c0caf5',
+  cursor_border = '#c0caf5',
+  cursor_fg = '#1a1b26',
+}
 config.initial_cols = 180
 config.initial_rows = 48
 config.adjust_window_size_when_changing_font_size = false
@@ -150,6 +170,20 @@ config.mouse_bindings = {
 wezterm.on('gui-startup', function(cmd)
   local _, _, window = wezterm.mux.spawn_window(cmd or {})
   window:gui_window():maximize()
+end)
+
+-- ============================================================
+-- Drop window opacity when wezterm itself loses focus, so the active
+-- window is obvious when multiple wezterm windows are open.
+-- ============================================================
+wezterm.on('window-focus-changed', function(window, _pane)
+  local overrides = window:get_config_overrides() or {}
+  if window:is_focused() then
+    overrides.window_background_opacity = 0.97
+  else
+    overrides.window_background_opacity = 0.78
+  end
+  window:set_config_overrides(overrides)
 end)
 
 -- ============================================================
