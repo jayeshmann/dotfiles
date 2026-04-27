@@ -1,0 +1,18 @@
+{
+  "name": "superpowers-pinned",
+  "owner": {
+    "name": "jay (local pinned fork)"
+  },
+  "metadata": {
+    "description": "Local pinned copy of superpowers@5.0.7 with writing-plans/subagent-driven-development/test-driven-development removed. Outside the plugin cache so auto-update cannot restore the deletions."
+  },
+  "plugins": [
+    {
+      "name": "superpowers",
+      "version": "5.0.7-pinned",
+      "source": "./superpowers",
+      "description": "Pinned superpowers fork (TDD/writing-plans/SDD removed)",
+      "category": "development"
+    }
+  ]
+}

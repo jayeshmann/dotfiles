@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexPreCommitReview",
+  "description": "Schema for Codex pre-commit review output. Codex returns this object after reviewing a staged diff against the project's AGENTS.md / CLAUDE.md.",
+  "type": "object",
+  "required": ["verdict", "summary", "critical", "nits"],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "enum": ["APPROVED", "REVISE"],
+      "description": "APPROVED if no critical findings; REVISE if any critical finding exists."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One short paragraph: what the diff does and the overall assessment."
+    },
+    "critical": {
+      "type": "array",
+      "description": "Findings that must be addressed before commit. Empty array if none.",
+      "items": {
+        "type": "object",
+        "required": ["category", "file", "line", "issue", "suggested_fix"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "correctness",
+              "security",
+              "invariant-violation",
+              "test-coverage",
+              "perf",
+              "data-loss"
+            ]
+          },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"], "description": "1-indexed line in the diff or file; null if not localized." },
+          "issue": { "type": "string" },
+          "suggested_fix": { "type": ["string", "null"], "description": "Concrete fix proposal; null if codex isn't sure." }
+        }
+      }
+    },
+    "nits": {
+      "type": "array",
+      "description": "Style/suggestion notes. Address only if trivial and clearly improving; otherwise ignore.",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "issue"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"], "description": "1-indexed line; null if not localized." },
+          "issue": { "type": "string" }
+        }
+      }
+    }
+  }
+}

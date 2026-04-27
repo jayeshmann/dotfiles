@@ -10,6 +10,7 @@ shared/                          # cross-platform base
   ccstatusline/settings.json     → ~/.config/ccstatusline/settings.json
   claude/
     CLAUDE.md                    → ~/.claude/CLAUDE.md
+    codex-review.schema.json     → ~/.claude/codex-review.schema.json
     settings.json                → ~/.claude/settings.json
     bin/
       ctx-pct-colored.sh         → ~/.claude/bin/ctx-pct-colored.sh
@@ -21,6 +22,9 @@ shared/                          # cross-platform base
     config.yaml                  → ~/.hermes/config.yaml
   bin/
     csess                        → ~/.local/bin/csess
+  claude/local-marketplaces/superpowers-pinned/.claude-plugin/marketplace.json
+                                 → ~/.claude/local-marketplaces/superpowers-pinned/.claude-plugin/marketplace.json
+                                   (pinned superpowers fork manifest; plugin source is cloned by bootstrap, not tracked)
 wsl/                             # WSL-only
   wezterm.lua                    → /mnt/c/Users/jay/.wezterm.lua
   claude-bin/
@@ -58,3 +62,5 @@ git add -A && git commit -m "sync" && git push
 - `ctx-pct-colored.sh` exists because ccstatusline 2.2.8 has no native threshold coloring for context %.
 - `notify-attention.sh` uses `powershell.exe` and is WSL-only. macOS equivalent will use `osascript` once added.
 - Mac zsh paths (homebrew, fzf, java) will differ — plan to either templatize `zshrc` or split per-host once Mac is wired up.
+- `bootstrap-wsl.sh` also installs **mattpocock/skills** into `~/.claude/skills/` (skipping any already present) and reconstructs the **superpowers-pinned** local marketplace (`obra/superpowers@v5.0.7` minus three intentionally-removed skills + the deprecated `/write-plan` command). Auto-update can't reach the pinned copy because it lives outside `~/.claude/plugins/cache/`.
+- **hackingtool** (Z4nzu/hackingtool) is **not** auto-installed — it requires `sudo`. Install manually for authorized pentest engagements: `curl -sSL https://raw.githubusercontent.com/Z4nzu/hackingtool/master/install.sh | sudo bash`.

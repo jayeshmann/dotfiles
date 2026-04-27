@@ -44,32 +44,85 @@ Before editing a project you haven't touched:
 
 ## External code review (Codex)
 
-I run Codex as an asynchronous parallel reviewer over every commit and
-PR you ship. **Do not pause between commits to wait for it** — its
-review fires automatically and runs in parallel with your next step.
-Treat its feedback the same as any other course correction I might
-surface: incorporate it via a follow-up commit, never an `--amend`.
+Run Codex as a **synchronous pre-commit reviewer** over every staged
+diff. Fix every critical finding before committing or pushing — pushes
+only carry already-passed commits. Codex catches what diff-reread plus
+tests miss; the bar is shipping nothing it would flag.
 
-**The rule that makes async review work: self-review is the bar.**
-Codex is smart enough to catch sloppy work; the goal is to ship
-nothing it would flag in the first place. Before every commit:
+**Per-commit workflow:**
 
-- Re-read the diff (`git diff --cached`) end-to-end. Every changed
-  line should trace to a stated intent — if you can't justify a line
-  in one breath, drop it.
-- Run the relevant tests AND `<formatter> + <linter>` for the
-  language. Green at every step, no exceptions.
-- No debug `print` / `dbg!` / `console.log` / commented-out blocks
-  left in. No "TODO: clean up later" — clean up now or open a
-  backlog item.
-- No secrets, no logs of credentials, no PII in error messages.
-- If the change is non-trivial, ask yourself: "what would I question
-  if I were reviewing this?" Then either fix it or write a one-line
-  comment explaining why it's that way.
+1. **Self-review first** — codex is not a substitute:
+   - **Implementation matches the ask and the spec.** Every change
+     traces to what I asked for. No scope creep, no speculative
+     additions, no violation of project CLAUDE.md / AGENTS.md
+     invariants. If the ask was a bug fix, the diff fixes that bug
+     and only that bug.
+   - **TDD followed.** For features and bugfixes, a failing test
+     landed first and now passes. The test exercises the behavior in
+     the ask, not implementation incidentals. (Skip only when truly
+     infeasible — UI-only changes, hardware-coupled paths I've
+     explicitly waived.)
+   - Re-read `git diff --cached` end-to-end. Every changed line traces
+     to a stated intent — if you can't justify a line in one breath,
+     drop it.
+   - Run formatter + linter + the relevant tests. Green at every step,
+     no exceptions.
+   - No debug `print` / `dbg!` / `console.log`, no commented-out
+     blocks, no "TODO: clean up later" — clean up now or open a
+     backlog item.
+   - No secrets, no logs of credentials, no PII in error messages.
 
-Small, well-scoped, individually-revertable commits with green tests
-at each step. Don't collapse multiple steps into one mega-commit
-just because codex is fast. The discipline is for me, not for codex.
+2. **Run codex against the staged diff** (read-only, JSON verdict):
+   ```bash
+   git diff --cached | codex exec \
+     --sandbox read-only \
+     --output-schema ~/.claude/codex-review.schema.json \
+     -o /tmp/codex-review.json \
+     "Review the staged diff piped on <stdin> against this repo's
+      AGENTS.md (auto-loaded from cwd). Apply the project's stated
+      review priorities. Return JSON per schema: verdict
+      APPROVED|REVISE, plus critical findings and nits."
+   ```
+   - Codex auto-loads `AGENTS.md` from cwd — **do not cat it into the
+     prompt**. If a project section deserves focus (e.g. realtime
+     audio rules, append-only migrations), name it in the prompt by
+     section number — that's cheaper than re-passing the file. The
+     `<stdin>` block carries the diff; `codex exec --help` confirms
+     "If stdin is piped and a prompt is also provided, stdin is
+     appended as a `<stdin>` block."
+   - `~/.claude/codex-review.schema.json` defines the
+     verdict/critical/nits contract — must exist (it ships in this
+     config). OpenAI strict-mode requires `required` to enumerate
+     every property in each object; nullable optional fields use
+     `["type", "null"]`.
+   - Use `codex exec`, not `codex review` — only `exec` supports
+     `--output-schema` for deterministic gating.
+   - Never `--dangerously-bypass-approvals-and-sandbox` for review.
+     Review is read-only.
+
+3. **Triage `/tmp/codex-review.json`:**
+   - `APPROVED` → commit.
+   - `REVISE` → apply `superpowers:receiving-code-review` judgment per
+     critical finding. Fix real issues. For false positives, justify
+     them in your reply to me — don't blindly accept or blindly
+     dismiss. Nits: ignore unless trivial and clearly improving.
+
+4. **Re-run after fixes. Hard cap: 2 rounds.** If codex still flags
+   things after round 2, stop and surface the disagreement with your
+   reasoning instead of looping.
+
+5. Commit only after `APPROVED`, or after I OK shipping with the
+   remaining findings explicitly documented in your message.
+
+**Skip codex for:** pure-formatter commits (`make fmt`-only), lockfile
+bumps with no code changes, **non-runbook** doc typo fixes (do NOT
+skip for changes to CLAUDE.md / AGENTS.md / hook scripts / executable
+examples — those are operational), generated-file-only commits whose
+source change you already pushed through review.
+
+Small, well-scoped, individually-revertable commits with green tests at
+each step. Don't bundle steps into a mega-commit just because codex is
+fast. The discipline is for me, not for codex.
 
 ## Monitor mode (background log/event watching)
 Monitor is the single most useful debugging tool I have. **Use it as much as possible**, especially when:
@@ -87,6 +140,25 @@ If the work is "tell me when X is ready" (one notification, then done), use Bash
 
 ## Plugins
 Active globally: superpowers, claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, commit-commands, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide.
-# graphify
-- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
+
+**Direct-ask triggers — when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
+- "review this PR / review my diff" → `/code-review` (interactive, ad hoc; distinct from the pre-commit `codex exec` gate above which is automated and JSON-schema-driven)
+- "commit" / "commit and push" / "open PR" / "clean gone branches" → `commit-commands:commit` / `:commit-push-pr` / `:clean_gone`
+- "audit / improve / fix CLAUDE.md" → `claude-md-management:claude-md-improver` (or `:revise-claude-md` for session-learning updates)
+- "simplify this code" / "clean this up" → spawn Agent with `subagent_type: code-simplifier:code-simplifier`
+- "audit my Claude Code setup" / "what automations should I have" → `claude-code-setup:claude-automation-recommender`
+- frontend / UI / component / page work → `frontend-design:frontend-design` and/or `ui-ux-pro-max:ui-ux-pro-max`
+- TDD / "red-green-refactor" / "test-first" → user skill `tdd` (mattpocock). Superpowers' TDD/writing-plans/subagent-driven-development have been removed — do not try to invoke them.
+
+## User-level skills (`~/.claude/skills/`)
+Standalone skills (not plugin-namespaced — invoke via Skill tool by bare name). Match my ask to each skill's `description` field; if it fits, use it.
+- **graphify** — any input → knowledge graph. Trigger: `/graphify`
+- **gocomet-fs-ai-part1-reviewer** — score GoComet Nova FS AI Part 1 submissions
+- **mattpocock pack**: `tdd`, `triage-issue`, `to-issues`, `to-prd`, `qa`, `grill-me`, `caveman`, `edit-article`, `domain-model`, `ubiquitous-language`, `design-an-interface`, `request-refactor-plan`, `improve-codebase-architecture`, `migrate-to-shoehorn`, `setup-pre-commit`, `git-guardrails-claude-code`, `github-triage`, `scaffold-exercises`, `obsidian-vault`, `write-a-skill`, `zoom-out`. Source: github.com/mattpocock/skills.
+
+When I type `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
+
+## Pentest tooling
+`hackingtool` (Z4nzu/hackingtool) installs to `/usr/share/hackingtool` with launcher `/usr/bin/hackingtool` and user config in `~/.hackingtool/`. Use **only** during authorized pentest engagements I have explicitly scoped. Never run any included tool against a target I have not named as in-scope. Treat output as sensitive — do not paste credentials, hashes, or scan results into chat platforms or commits.
+
+@RTK.md

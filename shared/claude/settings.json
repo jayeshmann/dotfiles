@@ -25,6 +25,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -33,7 +44,8 @@
     "padding": 0
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "superpowers@superpowers-pinned": true,
     "claude-mem@thedotmack": true,
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
@@ -59,8 +71,15 @@
         "source": "git",
         "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
       }
+    },
+    "superpowers-pinned": {
+      "source": {
+        "source": "directory",
+        "path": "/home/jay/.claude/local-marketplaces/superpowers-pinned"
+      }
     }
   },
+  "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true
