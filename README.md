@@ -15,6 +15,10 @@ shared/                          # cross-platform base
       ctx-pct-colored.sh         → ~/.claude/bin/ctx-pct-colored.sh
       effort-level.sh            → ~/.claude/bin/effort-level.sh
       log-session.sh             → ~/.claude/bin/log-session.sh
+  codex/
+    config.toml                  → ~/.codex/config.toml
+  hermes/
+    config.yaml                  → ~/.hermes/config.yaml
   bin/
     csess                        → ~/.local/bin/csess
 wsl/                             # WSL-only

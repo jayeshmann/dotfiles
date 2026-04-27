@@ -17,7 +17,7 @@ config.line_height = 1.1
 config.harfbuzz_features = { 'calt=1', 'clig=1', 'liga=1' } -- ligatures on
 
 config.window_background_opacity = 0.97
-config.window_decorations = 'RESIZE'
+config.window_decorations = 'TITLE | RESIZE'
 config.window_padding = { left = 8, right = 8, top = 6, bottom = 0 }
 
 -- ============================================================
@@ -48,7 +48,7 @@ config.adjust_window_size_when_changing_font_size = false
 -- ============================================================
 config.use_fancy_tab_bar = false
 config.tab_bar_at_bottom = true
-config.hide_tab_bar_if_only_one_tab = true
+config.hide_tab_bar_if_only_one_tab = false
 config.tab_max_width = 32
 
 -- ============================================================
@@ -168,8 +168,7 @@ config.mouse_bindings = {
 -- LEADER + Space spawns: editor | claude code  /  lazygit
 -- ============================================================
 wezterm.on('gui-startup', function(cmd)
-  local _, _, window = wezterm.mux.spawn_window(cmd or {})
-  window:gui_window():maximize()
+  wezterm.mux.spawn_window(cmd or {})
 end)
 
 -- ============================================================

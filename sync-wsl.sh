@@ -10,6 +10,8 @@ cp ~/.claude/bin/ctx-pct-colored.sh      shared/claude/bin/
 cp ~/.claude/bin/effort-level.sh         shared/claude/bin/
 cp ~/.claude/bin/log-session.sh          shared/claude/bin/
 cp ~/.config/ccstatusline/settings.json  shared/ccstatusline/settings.json
+cp ~/.codex/config.toml                  shared/codex/config.toml
+cp ~/.hermes/config.yaml                 shared/hermes/config.yaml
 cp ~/.local/bin/csess                    shared/bin/csess
 cp /mnt/c/Users/jay/.wezterm.lua         wsl/wezterm.lua
 cp ~/.claude/bin/notify-attention.sh     wsl/claude-bin/notify-attention.sh

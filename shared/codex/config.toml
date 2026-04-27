@@ -1,0 +1,19 @@
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+[projects."/home/jay/code"]
+trust_level = "trusted"
+
+[tui]
+status_line = [
+  "current-dir",
+  "context-used",
+  "five-hour-limit",
+  "weekly-limit",
+  "git-branch",
+  "codex-version",
+  "model-with-reasoning",
+  "session-id",
+]
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
