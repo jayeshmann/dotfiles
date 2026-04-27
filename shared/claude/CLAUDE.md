@@ -161,4 +161,6 @@ When I type `/graphify`, invoke the Skill tool with `skill: "graphify"` before d
 ## Pentest tooling
 `hackingtool` (Z4nzu/hackingtool) installs to `/usr/share/hackingtool` with launcher `/usr/bin/hackingtool` and user config in `~/.hackingtool/`. Use **only** during authorized pentest engagements I have explicitly scoped. Never run any included tool against a target I have not named as in-scope. Treat output as sensitive — do not paste credentials, hashes, or scan results into chat platforms or commits.
 
+**When to invoke `hackingtool`:** reach for the `/usr/bin/hackingtool` launcher (or its sub-tools) whenever the task context calls for it on an in-scope engagement — recon, scanning, exploitation, post-exploitation, forensics, wireless, payload generation, etc. — and **always** when I explicitly ask ("use hackingtool", "run it through hackingtool", "fire up hackingtool"). Don't reinvent what it bundles. Still bound by the scope and sensitivity rules above.
+
 @RTK.md
