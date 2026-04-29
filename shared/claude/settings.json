@@ -29,6 +29,10 @@
           {
             "type": "command",
             "command": "/home/jay/.claude/bin/tweakcc-reapply.sh"
+          },
+          {
+            "type": "command",
+            "command": "setsid -f /home/jay/.claude/bin/tweakcc-upgrade-probe.sh </dev/null >/dev/null 2>&1"
           }
         ]
       }
