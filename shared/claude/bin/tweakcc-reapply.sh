@@ -25,7 +25,7 @@ mkdir -p "$LOG_DIR"
     exit 0
   fi
 
-  CURRENT_CC=$(claude --version 2>/dev/null | awk '{print $1}')
+  CURRENT_CC=$(claude --version 2>/dev/null | head -1 | awk '{print $1}')
   [[ -z "$CURRENT_CC" ]] && exit 0
 
   LAST_APPLIED=""

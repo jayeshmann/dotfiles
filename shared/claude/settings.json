@@ -1,7 +1,10 @@
 {
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "DISABLE_AUTOUPDATER": "1"
   },
+  "autoUpdatesChannel": "stable",
+  "minimumVersion": "2.1.120",
   "permissions": {
     "defaultMode": "auto"
   },
