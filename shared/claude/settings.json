@@ -22,6 +22,20 @@
           {
             "type": "command",
             "command": "/home/jay/.claude/bin/log-session.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/jay/.claude/bin/tweakcc-reapply.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/jay/.claude/bin/dotfiles-autosync.sh"
           }
         ]
       }
@@ -40,12 +54,10 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bunx -y ccstatusline@latest",
+    "command": "node /home/jay/.local/share/ccstatusline/dist/ccstatusline.js",
     "padding": 0
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": false,
-    "superpowers@superpowers-pinned": true,
     "claude-mem@thedotmack": true,
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
@@ -70,12 +82,6 @@
       "source": {
         "source": "git",
         "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
-      }
-    },
-    "superpowers-pinned": {
-      "source": {
-        "source": "directory",
-        "path": "/home/jay/.claude/local-marketplaces/superpowers-pinned"
       }
     }
   },

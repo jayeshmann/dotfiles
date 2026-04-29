@@ -102,10 +102,9 @@ tests miss; the bar is shipping nothing it would flag.
 
 3. **Triage `/tmp/codex-review.json`:**
    - `APPROVED` → commit.
-   - `REVISE` → apply `superpowers:receiving-code-review` judgment per
-     critical finding. Fix real issues. For false positives, justify
-     them in your reply to me — don't blindly accept or blindly
-     dismiss. Nits: ignore unless trivial and clearly improving.
+   - `REVISE` → fix real issues. For false positives, justify them in
+     your reply to me — don't blindly accept or blindly dismiss. Nits:
+     ignore unless trivial and clearly improving.
 
 4. **Re-run after fixes. Hard cap: 2 rounds.** If codex still flags
    things after round 2, stop and surface the disagreement with your
@@ -127,7 +126,7 @@ fast. The discipline is for me, not for codex.
 ## Monitor mode (background log/event watching)
 Monitor is the single most useful debugging tool I have. **Use it as much as possible**, especially when:
 
-- Running `superpowers:systematic-debugging` — the monitor is how Phase 1 evidence gets gathered live instead of by re-running the failure repeatedly.
+- Debugging an intermittent failure — the monitor gathers Phase-1 evidence live instead of re-running the failure repeatedly.
 - Running an app locally (`flutter run`, `cargo run`, `npm run dev`, `make run-…`) — start a Monitor on the relevant log stream BEFORE you trigger the action you want to observe. State transitions you would otherwise miss (`reqwest::connect: starting new connection` followed by silence, a TLS handshake that completes but a stream that never reads, etc.) become visible.
 - Watching for a specific failure signature while the user reproduces something — far better than asking them to copy-paste log dumps.
 
@@ -139,7 +138,7 @@ Filter discipline:
 If the work is "tell me when X is ready" (one notification, then done), use Bash `run_in_background` with an `until` condition instead — Monitor is for ongoing event streams, not single-shot waits.
 
 ## Plugins
-Active globally: superpowers, claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, commit-commands, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide.
+Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, commit-commands, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers was removed — do NOT try to invoke any `superpowers:*` skill.)
 
 **Direct-ask triggers — when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
 - "review this PR / review my diff" → `/code-review` (interactive, ad hoc; distinct from the pre-commit `codex exec` gate above which is automated and JSON-schema-driven)
@@ -147,14 +146,21 @@ Active globally: superpowers, claude-mem, ui-ux-pro-max, frontend-design, contex
 - "audit / improve / fix CLAUDE.md" → `claude-md-management:claude-md-improver` (or `:revise-claude-md` for session-learning updates)
 - "simplify this code" / "clean this up" → spawn Agent with `subagent_type: code-simplifier:code-simplifier`
 - "audit my Claude Code setup" / "what automations should I have" → `claude-code-setup:claude-automation-recommender`
-- frontend / UI / component / page work → `frontend-design:frontend-design` and/or `ui-ux-pro-max:ui-ux-pro-max`
-- TDD / "red-green-refactor" / "test-first" → user skill `tdd` (mattpocock). Superpowers' TDD/writing-plans/subagent-driven-development have been removed — do not try to invoke them.
+- TDD / "red-green-refactor" / "test-first" → user skill `tdd` (mattpocock).
+
+**Frontend skill routing — both are installed; pick based on the project:**
+- `frontend-design:frontend-design` (Anthropic) → distinctive aesthetic, marketing/landing/portfolio/consumer/creative work. Forces deliberate visual identity before code.
+- `ui-ux-pro-max:ui-ux-pro-max` (community) → enterprise dashboards, SaaS, design-system-heavy work, multi-stack consistency. Reasoning engine that picks coherent style/palette/typography for a stated product type.
+- For ambiguous/general "make this look better" asks, invoke **both** in sequence: `frontend-design` for the aesthetic decision, then `ui-ux-pro-max` to enforce coherence and accessibility.
 
 ## User-level skills (`~/.claude/skills/`)
 Standalone skills (not plugin-namespaced — invoke via Skill tool by bare name). Match my ask to each skill's `description` field; if it fits, use it.
 - **graphify** — any input → knowledge graph. Trigger: `/graphify`
 - **gocomet-fs-ai-part1-reviewer** — score GoComet Nova FS AI Part 1 submissions
-- **mattpocock pack**: `tdd`, `triage-issue`, `to-issues`, `to-prd`, `qa`, `grill-me`, `caveman`, `edit-article`, `domain-model`, `ubiquitous-language`, `design-an-interface`, `request-refactor-plan`, `improve-codebase-architecture`, `migrate-to-shoehorn`, `setup-pre-commit`, `git-guardrails-claude-code`, `github-triage`, `scaffold-exercises`, `obsidian-vault`, `write-a-skill`, `zoom-out`. Source: github.com/mattpocock/skills.
+- **mattpocock pack** (current upstream — github.com/mattpocock/skills):
+  - engineering: `diagnose`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-issues`, `to-prd`, `triage`, `zoom-out`
+  - productivity: `caveman`, `grill-me`, `write-a-skill`
+  - misc: `git-guardrails-claude-code`, `migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`
 
 When I type `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
 

@@ -1,21 +1,91 @@
 #!/usr/bin/env bash
-# Push repo configs out to live WSL paths. Backs up existing files to *.bak.<ts>.
+# Push repo configs to live WSL paths. Order is deliberate:
+#   1. Validate prerequisites (bun, git, claude).
+#   2. Clone+build ccstatusline and tweakcc into staging paths.
+#   3. Apply tweakcc patches to the live Claude install.
+#   4. Only after the above succeeds, back up and replace live config.
+#   5. Refresh mattpocock skills last (idempotent + recoverable).
+#
+# This ordering means a failure in step 1-3 leaves the live Claude
+# config untouched. Existing files replaced in step 4 are backed up to
+# `*.bak.<ts>` so each individual swap can be hand-rolled back.
 set -euo pipefail
 cd "$(dirname "$0")"
-. ./lib.sh
 
 ts=$(date +%s)
 backup() { [[ -e "$1" ]] && cp "$1" "$1.bak.$ts" || true; }
 
-mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.hermes ~/.local/bin
+# ─── 1. Prerequisites ─────────────────────────────────────────────────────────
+for cmd in bun git claude; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "ERR: $cmd not installed — install before running bootstrap." >&2
+        exit 1
+    fi
+done
 
+mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.hermes ~/.local/bin \
+         ~/.tweakcc ~/.local/share ~/.local/state/dotfiles
+
+# ─── 2. Build ccstatusline (main HEAD) ────────────────────────────────────────
+# Built locally because main HEAD ships features ahead of the npm release
+# (native xhigh thinking-effort support, jj VCS widgets, compaction-counter,
+# Context Window widget). Pinning to a built artifact also avoids a remote
+# refetch on every statusline tick.
+ccs=~/.local/share/ccstatusline
+if [[ ! -d "$ccs/.git" ]]; then
+    git clone https://github.com/sirmalloc/ccstatusline "$ccs"
+else
+    git -C "$ccs" pull --ff-only
+fi
+(cd "$ccs" && bun install && bun run build)
+[[ -f "$ccs/dist/ccstatusline.js" ]] || {
+    echo "ERR: ccstatusline build did not produce dist/ccstatusline.js — aborting." >&2
+    exit 1
+}
+
+# ─── 3. Build tweakcc (main HEAD) ─────────────────────────────────────────────
+# Same rationale: main HEAD has CC 2.1.122-era prompt patches not yet in v4.0.11.
+tcc=~/.local/share/tweakcc
+if [[ ! -d "$tcc/.git" ]]; then
+    git clone https://github.com/Piebald-AI/tweakcc "$tcc"
+else
+    git -C "$tcc" pull --ff-only
+fi
+(cd "$tcc" && bun install && bun run build)
+[[ -f "$tcc/dist/index.mjs" ]] || {
+    echo "ERR: tweakcc build did not produce dist/index.mjs — aborting." >&2
+    exit 1
+}
+
+# tweakcc config must exist before --apply; ship it before patching CC.
+backup ~/.tweakcc/config.json && cp shared/tweakcc/config.json ~/.tweakcc/config.json
+
+# Apply tweakcc to live Claude under the SAME flock the SessionStart
+# reapply hook uses, so a hook firing mid-bootstrap can't race two
+# concurrent --apply processes against the same Claude install.
+# Marker is written via temp+mv only on success, matching the hook.
+(
+    exec 9>~/.tweakcc/reapply.lock
+    flock 9
+    if node "$tcc/dist/index.mjs" --apply; then
+        cc_ver=$(claude --version | awk '{print $1}')
+        tmp=$(mktemp ~/.tweakcc/.last-applied-cc-version.XXXXXX)
+        printf '%s' "$cc_ver" > "$tmp"
+        mv "$tmp" ~/.tweakcc/.last-applied-cc-version
+    else
+        echo "WARN: tweakcc --apply had failures — marker NOT advanced; SessionStart hook will retry." >&2
+    fi
+)
+
+# ─── 4. Replace live Claude/zsh/codex/hermes config ───────────────────────────
 backup ~/.zshrc                              && cp shared/zshrc                              ~/.zshrc
 backup ~/.claude/settings.json               && cp shared/claude/settings.json               ~/.claude/settings.json
 backup ~/.claude/CLAUDE.md                   && cp shared/claude/CLAUDE.md                   ~/.claude/CLAUDE.md
 backup ~/.claude/codex-review.schema.json    && cp shared/claude/codex-review.schema.json    ~/.claude/codex-review.schema.json
 backup ~/.claude/bin/ctx-pct-colored.sh      && cp shared/claude/bin/ctx-pct-colored.sh      ~/.claude/bin/
-backup ~/.claude/bin/effort-level.sh         && cp shared/claude/bin/effort-level.sh         ~/.claude/bin/
 backup ~/.claude/bin/log-session.sh          && cp shared/claude/bin/log-session.sh          ~/.claude/bin/
+backup ~/.claude/bin/tweakcc-reapply.sh      && cp shared/claude/bin/tweakcc-reapply.sh      ~/.claude/bin/
+backup ~/.claude/bin/dotfiles-autosync.sh    && cp shared/claude/bin/dotfiles-autosync.sh    ~/.claude/bin/
 backup ~/.config/ccstatusline/settings.json  && cp shared/ccstatusline/settings.json         ~/.config/ccstatusline/settings.json
 backup ~/.codex/config.toml                  && cp shared/codex/config.toml                  ~/.codex/config.toml
 backup ~/.hermes/config.yaml                 && cp shared/hermes/config.yaml                 ~/.hermes/config.yaml
@@ -25,82 +95,26 @@ backup ~/.claude/bin/notify-attention.sh     && cp wsl/claude-bin/notify-attenti
 
 chmod +x ~/.claude/bin/*.sh ~/.local/bin/csess
 
-# ─── User-level Claude skills (mattpocock pack + locals) ──────────────────────
-# Standalone skills in ~/.claude/skills/. mattpocock skills come from upstream;
-# graphify and gocomet-fs-ai-part1-reviewer are managed elsewhere and not
-# clobbered here.
+# ─── 5. mattpocock skills (idempotent refresh) ────────────────────────────────
+# Pulls every directory under skills/{engineering,productivity,misc} from
+# mattpocock/skills main. Existing entries are overwritten so deprecations
+# upstream propagate. graphify and gocomet-fs-ai-part1-reviewer are managed
+# separately and not touched here.
 mkdir -p ~/.claude/skills
 mp_tmp=$(mktemp -d)
 if git clone --depth 1 https://github.com/mattpocock/skills "$mp_tmp"; then
-    for d in "$mp_tmp"/*/; do
-        name=$(basename "$d")
-        if [[ -f "$d/SKILL.md" && ! -e ~/.claude/skills/"$name" ]]; then
+    for category in engineering productivity misc; do
+        for d in "$mp_tmp/skills/$category"/*/; do
+            [[ -d "$d" ]] || continue
+            name=$(basename "$d")
+            rm -rf ~/.claude/skills/"$name"
             cp -r "$d" ~/.claude/skills/"$name"
-        fi
+        done
     done
 else
-    echo "WARN: mattpocock/skills clone failed — skills not installed. Re-run bootstrap to retry." >&2
+    echo "WARN: mattpocock/skills clone failed — skills not refreshed. Re-run bootstrap to retry." >&2
 fi
 rm -rf "$mp_tmp"
-
-# ─── Pinned superpowers fork (auto-update-proof) ──────────────────────────────
-# Clones obra/superpowers at $SP_TAG into a temp dir, applies $SP_REMOVED_PATHS,
-# then atomically swaps into place. Skips the swap if sp_pin_is_healthy reports
-# the live install already matches. Existing installs are backed up to
-# $SP_TARGET.bak.$ts before replacement; a failed swap rolls back to the backup
-# rather than leaving the install partial.
-mkdir -p "$SP_PIN/.claude-plugin"
-backup "$SP_PIN/.claude-plugin/marketplace.json" \
-    && cp shared/claude/local-marketplaces/superpowers-pinned/.claude-plugin/marketplace.json \
-          "$SP_PIN/.claude-plugin/marketplace.json"
-
-if sp_pin_is_healthy; then
-    echo "superpowers-pinned: already healthy at $SP_TAG — skipping rebuild."
-else
-    sp_stage="$SP_PIN/.staging.$ts"
-    rm -rf "$sp_stage"
-    if git clone --depth 1 --branch "$SP_TAG" "$SP_REMOTE" "$sp_stage"; then
-        # Mark the install with the pinned tag so sp_pin_is_healthy can
-        # verify it later. Shallow `--branch <tag>` clones don't materialize
-        # tag refs, so `git describe --tags` is unreliable here; a marker
-        # file is robust and sidesteps git plumbing entirely.
-        echo "$SP_TAG" > "$sp_stage/$SP_PIN_MARKER"
-        for p in "${SP_REMOVED_PATHS[@]}"; do
-            rm -rf "$sp_stage/$p"
-        done
-        if [[ -f "$sp_stage/.claude-plugin/plugin.json" ]]; then
-            # Atomic-ish swap: pre-stage to a sibling under $SP_PIN (same fs as
-            # $SP_TARGET, so each mv is a single rename(2)). On failure of the
-            # final move, roll the backup back so the live install never
-            # disappears.
-            sp_new="$SP_TARGET.new.$ts"
-            mv "$sp_stage" "$sp_new"
-            if [[ -e "$SP_TARGET" ]]; then
-                mv "$SP_TARGET" "$SP_TARGET.bak.$ts"
-                if mv "$sp_new" "$SP_TARGET"; then
-                    echo "superpowers-pinned: installed $SP_TAG (prior preserved at $SP_TARGET.bak.$ts)."
-                else
-                    echo "ERR: final swap failed — restoring previous install." >&2
-                    mv "$SP_TARGET.bak.$ts" "$SP_TARGET" || \
-                        echo "FATAL: rollback also failed — manual recovery needed: $SP_TARGET.bak.$ts and $sp_new" >&2
-                    rm -rf "$sp_new"
-                    exit 1
-                fi
-            else
-                mv "$sp_new" "$SP_TARGET"
-                echo "superpowers-pinned: installed $SP_TAG."
-            fi
-        else
-            echo "ERR: cloned superpowers tree missing .claude-plugin/plugin.json — aborting swap." >&2
-            rm -rf "$sp_stage"
-            exit 1
-        fi
-    else
-        echo "ERR: superpowers clone failed — pinned plugin not updated." >&2
-        rm -rf "$sp_stage"
-        exit 1
-    fi
-fi
 
 echo "bootstrap complete. Existing files backed up with .bak.$ts suffix."
 echo

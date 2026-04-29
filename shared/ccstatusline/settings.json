@@ -34,7 +34,7 @@
     [
       { "id": "model", "type": "model", "color": "hex:7DCFFF", "bold": true, "rawValue": true },
       { "id": "sep3a", "type": "separator", "color": "hex:565F89", "character": " │ " },
-      { "id": "effort", "type": "custom-command", "color": "hex:FF9E64", "commandPath": "/home/jay/.claude/bin/effort-level.sh", "preserveColors": true, "timeout": 500 },
+      { "id": "effort", "type": "thinking-effort", "color": "hex:FF9E64", "bold": true, "rawValue": true },
       { "id": "flex3", "type": "flex-separator" },
       { "id": "sid", "type": "claude-session-id", "color": "hex:565F89", "rawValue": true }
     ]
