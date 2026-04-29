@@ -3,6 +3,9 @@ model_reasoning_effort = "medium"
 [projects."/home/jay/code"]
 trust_level = "trusted"
 
+[projects."/tmp/gocomet-spec-test-2026-04-29T22-57-10Z/codex"]
+trust_level = "trusted"
+
 [tui]
 status_line = [
   "current-dir",
