@@ -12,6 +12,9 @@ trust_level = "trusted"
 [projects."/tmp/gocomet-spec-test-2026-04-30T05-47-38Z/codex"]
 trust_level = "trusted"
 
+[projects."/tmp/gocomet-spec-test-2026-04-30T05-58-22Z/codex"]
+trust_level = "trusted"
+
 [tui]
 status_line = [
   "current-dir",
