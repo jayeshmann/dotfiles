@@ -59,15 +59,16 @@ mkdir -p "$STATE_DIR"
 
   HEAD_AFTER=$(git rev-parse HEAD 2>/dev/null || echo "")
   if [[ "$HEAD_BEFORE" != "$HEAD_AFTER" ]]; then
-    echo "[$(date -Iseconds)] pull moved HEAD ${HEAD_BEFORE:0:7} -> ${HEAD_AFTER:0:7}; skipping sync to avoid clobbering remote changes. Reconcile manually via bootstrap-wsl.sh." >>"$LOG"
+    echo "[$(date -Iseconds)] pull moved HEAD ${HEAD_BEFORE:0:7} -> ${HEAD_AFTER:0:7}; skipping sync to avoid clobbering remote changes. Reconcile manually via ./dot bootstrap." >>"$LOG"
     exit 0
   fi
 
-  if [[ ! -x ./sync-wsl.sh ]]; then
+  if [[ ! -x ./dot ]]; then
+    echo "[$(date -Iseconds)] ./dot not found or not executable; skipping." >>"$LOG"
     exit 0
   fi
-  if ! ./sync-wsl.sh >>"$LOG" 2>&1; then
-    echo "[$(date -Iseconds)] sync-wsl.sh failed" >>"$LOG"
+  if ! ./dot sync >>"$LOG" 2>&1; then
+    echo "[$(date -Iseconds)] ./dot sync failed" >>"$LOG"
     exit 0
   fi
 

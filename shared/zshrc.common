@@ -1,0 +1,151 @@
+# shared/zshrc.common — cross-OS zsh additions, tracked in dotfiles repo.
+#
+# Sourced from ~/.zshrc by the bootstrap-injected stub:
+#     # >>> dotfiles common <<<
+#     [ -f ~/.zshrc.common ] && . ~/.zshrc.common
+#
+# `~/.zshrc` itself is NOT touched by the dotfiles repo. It stays owned by
+# the user and tool installers (`brew shellenv`, `nvm install`, `pyenv init`,
+# `rustup-init`, `bun`, `gcloud`, `rbenv init`, etc.). Machine-specific paths
+# and installer-generated lines stay machine-local.
+#
+# After bootstrap, if your ~/.zshrc *also* has lines for things now provided
+# here (zinit init, starship init, fzf --zsh, brew shellenv), DELETE them
+# from ~/.zshrc — keep only one source of truth. Common runs LAST so its
+# init lines are the effective ones either way, but having two copies makes
+# startup slower and harder to reason about.
+#
+# Things that belong HERE (cross-OS, you want identical on Mac and WSL):
+#   - HISTFILE / setopts
+#   - aliases (Claude, git, nav)
+#   - plugin-manager init (zinit + plugin list)
+#   - prompt init (starship)
+#   - fzf keybindings
+#   - brew shellenv (Mac-guarded)
+#   - claude-mem worker auto-start
+#
+# Things that STAY in ~/.zshrc (machine-local):
+#   - language-toolchain init: pyenv, nvm, bun, rbenv, cargo
+#   - JDK / Android / Flutter / gcloud SDK PATHs
+#   - work-specific env (e.g. YODA_URL, internal proxy settings)
+
+# ────── OS detection ────────────────────────────────────────────────────────
+case "$OSTYPE" in
+  darwin*) DOTFILES_OS=mac   ;;
+  linux*)  DOTFILES_OS=linux ;;
+  *)       DOTFILES_OS=other ;;
+esac
+
+# ────── Homebrew shellenv (Mac-guarded; no-op on Linux without brew) ────────
+# Runs early so subsequent PATH-dependent checks (fzf, starship locations) see
+# Homebrew's bin paths.
+if [[ "$DOTFILES_OS" == "mac" ]]; then
+  if [[ -d /opt/homebrew && -z "${HOMEBREW_PREFIX:-}" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -d /usr/local/Homebrew && -z "${HOMEBREW_PREFIX:-}" ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+fi
+
+# ────── History ─────────────────────────────────────────────────────────────
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_REDUCE_BLANKS APPEND_HISTORY INC_APPEND_HISTORY
+
+# ────── zinit + completion (with double-init guard) ─────────────────────────
+# Skip zinit init if it's already been loaded by ~/.zshrc — re-sourcing
+# zinit.zsh in the same shell can clobber its internal state and re-run
+# plugin loaders, which slows startup.
+if [[ -f "$HOME/.local/share/zinit/zinit.git/zinit.zsh" && -z "${ZINIT_HOME:-}" && -z "${ZINIT[BIN_DIR]:-}" ]]; then
+  source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
+  autoload -Uz compinit
+  # Performance: regenerate completion cache once a day (instant startup).
+  if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.m1) ]]; then
+    compinit -C
+  else
+    compinit
+  fi
+  zinit cdreplay -q
+
+  # Async plugins — syntax-highlighting MUST load last
+  zinit light zsh-users/zsh-autosuggestions
+  zinit light Aloxaf/fzf-tab
+  zinit light zsh-users/zsh-syntax-highlighting
+
+  # OMZ essentials
+  zinit snippet OMZ::plugins/git/git.plugin.zsh
+  zinit snippet OMZ::plugins/sudo/sudo.plugin.zsh
+  zinit snippet OMZ::plugins/extract/extract.plugin.zsh
+fi
+
+# ────── fzf keybindings ─────────────────────────────────────────────────────
+# Idempotent: re-running `eval "$(fzf --zsh)"` just re-registers the widgets,
+# no harm if ~/.zshrc already does it.
+if command -v fzf >/dev/null 2>&1 && fzf --zsh >/dev/null 2>&1; then
+  eval "$(fzf --zsh)"
+fi
+
+# ────── Aliases — unified set, identical names on Mac and WSL ───────────────
+# Claude
+alias cc='claude'
+alias ccr='claude --resume'
+alias ccy='claude --dangerously-skip-permissions'   # YOLO — only in worktrees/containers
+alias cv='claude --voice'
+
+# Git
+alias gs='git status -sb'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate -20'
+alias lg='lazygit'
+
+# Listing — same alias name, OS-conditional body (BSD vs GNU color flags)
+if [[ "$DOTFILES_OS" == "mac" ]]; then
+  alias ll='ls -lahG'
+  alias la='ls -AG'
+else
+  alias ll='ls -lah --color=auto'
+  alias la='ls -A --color=auto'
+fi
+
+# bat as cat (only if bat is installed)
+command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never'
+
+# Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias proj='cd ~/code'
+
+# Misc
+alias zr='exec zsh'
+alias zc='${EDITOR:-code} ~/.zshrc'
+alias myip='curl -s https://api.ipify.org && echo'
+alias mkdir='mkdir -pv'
+
+# ────── claude-mem worker — auto-start if not already listening ─────────────
+alias cmem-worker='cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:status'
+alias cmem-start='cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:start'
+alias cmem-stop='cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:stop'
+alias cmem-restart='cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:restart'
+
+_cmem_port_in_use() {
+  if [[ "$DOTFILES_OS" == "linux" ]]; then
+    ss -tlnp 2>/dev/null | grep -q ":37777 "
+  elif [[ "$DOTFILES_OS" == "mac" ]]; then
+    lsof -nP -iTCP:37777 -sTCP:LISTEN >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
+if [[ -d "$HOME/.claude/plugins/marketplaces/thedotmack" ]] && ! _cmem_port_in_use; then
+  (cd "$HOME/.claude/plugins/marketplaces/thedotmack" && npm run worker:start &>/dev/null &) 2>/dev/null
+fi
+
+# ────── Starship prompt (idempotent — last) ─────────────────────────────────
+[[ -f "$HOME/.config/starship.toml" ]] && export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"

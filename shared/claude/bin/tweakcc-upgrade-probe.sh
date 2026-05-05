@@ -25,7 +25,7 @@
 
 set -uo pipefail
 
-INTERVAL_DAYS=3
+INTERVAL_DAYS=1
 TWEAKCC_REPO="${HOME}/.local/share/tweakcc"
 TWEAKCC_DIST="${TWEAKCC_REPO}/dist/index.mjs"
 TWEAKCC_HOME="${HOME}/.tweakcc"

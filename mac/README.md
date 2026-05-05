@@ -1,11 +1,12 @@
 # mac/
 
-macOS-specific configs. To be filled when this repo is bootstrapped on a Mac.
+macOS-specific overlays. Run `bootstrap-mac.sh` from the repo root.
 
-Planned contents:
-- `tmux.conf` or `cmux/` config (terminal multiplexer instead of WezTerm panes)
-- `claude-bin/notify-attention.sh` — `osascript` notifier replacing the WSL PowerShell version
-- `iterm2/` or `ghostty/` profile if needed
-- `bootstrap-mac.sh`, `sync-mac.sh`
+Currently empty — Mac uses cmux which has native Claude Code notification
+support, so we don't ship a notify-attention.sh. The shared Notification
+hook in `shared/claude/settings.json` is wrapped in a `[ -x ... ] && ...`
+guard so it silently no-ops on Mac.
 
-Most of `shared/` should apply directly; only platform divergences land here.
+Most of `shared/` applies directly. Future additions, when needed:
+- `tmux.conf` or `cmux/` config dump
+- `iterm2/` or `ghostty/` profile dump

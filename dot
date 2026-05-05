@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+# Single entry point for managing dotfiles across WSL and macOS.
+#
+# Usage:
+#   ./dot              # interactive menu
+#   ./dot bootstrap    # apply repo → live (one-time setup; clones+builds deps)
+#   ./dot sync         # capture live → repo (run before commit)
+#   ./dot restore      # roll back to the most recent .bak.<ts> backup
+#   ./dot help
+#
+# Direction model:
+#   bootstrap : repo → live   (writes ~/.zshrc, ~/.claude/*, etc.)
+#   sync      : live → repo   (pulls your edits back into shared/...)
+#   restore   : .bak.<ts> → live (undoes the most recent bootstrap)
+#
+# OS detection:
+#   $OSTYPE captures the platform once. bootstrap branches on it for things
+#   like RTK install (brew vs install.sh), the skills layout (mac uses
+#   ~/.agents/skills + symlinks; wsl writes directly), and which extra
+#   files to ship (wezterm.lua + PowerShell notify-attention.sh on WSL only).
+set -euo pipefail
+cd "$(dirname "$0")"
+
+# ─── OS detection ─────────────────────────────────────────────────────────────
+case "$OSTYPE" in
+  darwin*) OS=mac   ;;
+  linux*)  OS=linux ;;
+  *)       OS=other ;;
+esac
+
+ts=$(date +%s)
+backup() { [[ -e "$1" ]] && cp "$1" "$1.bak.$ts" || true; }
+copy_subst()   { sed "s|__HOME__|${HOME}|g" "$1" > "$2"; }
+copy_unsubst() { sed "s|${HOME}|__HOME__|g" "$1" > "$2"; }
+link_skill()   { local src="$1" name="$2"; rm -rf "${HOME}/.claude/skills/${name}"; ln -s "$src" "${HOME}/.claude/skills/${name}"; }
+
+# Resolve the install dir matching `claude --version`. Claude's native installer
+# leaves multiple versions on disk under ~/.local/share/claude/versions/<v>/;
+# tweakcc refuses to guess between them. Echo the active version's dir so the
+# caller can `export TWEAKCC_CC_INSTALLATION_PATH=$(detect_cc_install)`.
+detect_cc_install() {
+  # tweakcc accepts either a cli.js path (Node install) or a native-binary
+  # path. The native installer's "binary" at versions/<v> is a FILE, not a
+  # dir — so test with -e (file or dir) and pass the symlink target itself,
+  # never its dirname.
+  local v cand
+  v=$(claude --version 2>/dev/null | head -1 | awk '{print $1}')
+  [[ -z "$v" ]] && return 1
+  cand="$HOME/.local/share/claude/versions/$v"
+  if [[ -e "$cand" ]]; then
+    printf '%s' "$cand"
+    return 0
+  fi
+  local bin target
+  bin=$(command -v claude 2>/dev/null) || return 1
+  if [[ -L "$bin" ]]; then
+    target=$(readlink "$bin")
+    case "$target" in
+      /*) printf '%s' "$target" ;;
+      *)  printf '%s' "$(cd "$(dirname "$bin")" && cd "$(dirname "$target")" 2>/dev/null && pwd -P)/$(basename "$target")" ;;
+    esac
+  else
+    printf '%s' "$bin"
+  fi
+}
+
+# ─── Tracked file pairs (live ↔ repo) ─────────────────────────────────────────
+# Each entry: "live_path repo_path subst_mode" where subst_mode is "plain"
+# or "subst" (latter = __HOME__↔$HOME on the way through).
+SYNC_PAIRS=(
+  "$HOME/.zshrc.common                          shared/zshrc.common                           plain"
+  "$HOME/.claude/settings.json                  shared/claude/settings.json                   plain"
+  "$HOME/.claude/CLAUDE.md                      shared/claude/CLAUDE.md                       plain"
+  "$HOME/.claude/codex-review.schema.json       shared/claude/codex-review.schema.json        plain"
+  "$HOME/.claude/bin/ctx-pct-colored.sh         shared/claude/bin/ctx-pct-colored.sh          plain"
+  "$HOME/.claude/bin/log-session.sh             shared/claude/bin/log-session.sh              plain"
+  "$HOME/.claude/bin/tweakcc-reapply.sh         shared/claude/bin/tweakcc-reapply.sh          plain"
+  "$HOME/.claude/bin/tweakcc-status.sh          shared/claude/bin/tweakcc-status.sh           plain"
+  "$HOME/.claude/bin/tweakcc-upgrade-probe.sh   shared/claude/bin/tweakcc-upgrade-probe.sh    plain"
+  "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"
+  "$HOME/.claude/bin/dotfiles-autosync.sh       shared/claude/bin/dotfiles-autosync.sh        plain"
+  "$HOME/.tweakcc/config.json                   shared/tweakcc/config.json                    plain"
+  "$HOME/.config/starship.toml                  shared/starship/starship.toml                 plain"
+  "$HOME/.codex/config.toml                     shared/codex/config.toml                      plain"
+  "$HOME/.local/bin/csess                       shared/bin/csess                              plain"
+  "$HOME/.config/ccstatusline/settings.json     shared/ccstatusline/settings.json             subst"
+)
+# Linux-only extras
+LINUX_EXTRA_PAIRS=(
+  "$HOME/.hermes/config.yaml                    shared/hermes/config.yaml                     plain"
+  "$HOME/.claude/bin/notify-attention.sh        wsl/claude-bin/notify-attention.sh            plain"
+  "/mnt/c/Users/jay/.wezterm.lua                wsl/wezterm.lua                               plain"
+)
+
+active_pairs() {
+  for p in "${SYNC_PAIRS[@]}"; do echo "$p"; done
+  if [[ "$OS" == "linux" ]]; then
+    for p in "${LINUX_EXTRA_PAIRS[@]}"; do echo "$p"; done
+  fi
+}
+
+# ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
+cmd_bootstrap() {
+  echo "==> bootstrap on $OS (ts=$ts)"
+
+  # Prereqs (universal)
+  for cmd in bun git claude jq; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "ERR: $cmd not installed. Install first." >&2
+      [[ "$OS" == "mac"   ]] && echo "    e.g. brew install oven-sh/bun/bun jq" >&2
+      [[ "$OS" == "linux" ]] && echo "    e.g. sudo apt install jq && curl -fsSL https://bun.sh/install | bash" >&2
+      exit 1
+    fi
+  done
+  if [[ "$OS" == "mac" ]] && ! command -v brew >/dev/null 2>&1; then
+    echo "ERR: brew not installed (Mac requires it for codex/RTK auto-install)." >&2
+    exit 1
+  fi
+
+  mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.local/bin \
+           ~/.tweakcc ~/.local/share ~/.local/state/dotfiles \
+           ~/.claude/skills ~/.agents/skills
+
+  # zinit (both OSes — shared/zshrc requires it for turbo loading)
+  ZINIT_HOME="$HOME/.local/share/zinit/zinit.git"
+  if [[ ! -d "$ZINIT_HOME/.git" ]]; then
+    echo "==> installing zinit"
+    git clone --depth=1 https://github.com/zdharma-continuum/zinit "$ZINIT_HOME"
+  fi
+
+  # codex CLI (Mac auto-install via brew; on Linux, expect manual install)
+  if [[ "$OS" == "mac" ]] && ! command -v codex >/dev/null 2>&1; then
+    echo "==> brew install codex"
+    brew install codex
+  fi
+
+  # RTK (Mac via brew; Linux via curl-pipe-sh)
+  if ! command -v rtk >/dev/null 2>&1; then
+    echo "==> installing RTK"
+    if [[ "$OS" == "mac" ]]; then
+      brew install rtk 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+    else
+      curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+    fi
+  fi
+
+  # ccstatusline (build main HEAD)
+  ccs="$HOME/.local/share/ccstatusline"
+  if [[ ! -d "$ccs/.git" ]]; then
+    git clone https://github.com/sirmalloc/ccstatusline "$ccs"
+  else
+    git -C "$ccs" pull --ff-only
+  fi
+  (cd "$ccs" && bun install && bun run build)
+  [[ -f "$ccs/dist/ccstatusline.js" ]] || { echo "ERR: ccstatusline build failed" >&2; exit 1; }
+
+  # tweakcc (build main HEAD + apply)
+  tcc="$HOME/.local/share/tweakcc"
+  if [[ ! -d "$tcc/.git" ]]; then
+    git clone https://github.com/Piebald-AI/tweakcc "$tcc"
+  else
+    git -C "$tcc" pull --ff-only
+  fi
+  (cd "$tcc" && bun install && bun run build)
+  [[ -f "$tcc/dist/index.mjs" ]] || { echo "ERR: tweakcc build failed" >&2; exit 1; }
+
+  backup ~/.tweakcc/config.json && cp shared/tweakcc/config.json ~/.tweakcc/config.json
+
+  apply_tweakcc() {
+    local cc_install
+    cc_install=$(detect_cc_install || true)
+    if [[ -z "$cc_install" ]]; then
+      echo "WARN: could not detect Claude install dir; tweakcc may pick the wrong version." >&2
+    fi
+    if TWEAKCC_CC_INSTALLATION_PATH="$cc_install" node "$tcc/dist/index.mjs" --apply; then
+      local cc_ver tmp
+      cc_ver=$(claude --version | awk '{print $1}')
+      tmp=$(mktemp ~/.tweakcc/.last-applied-cc-version.XXXXXX)
+      printf '%s' "$cc_ver" > "$tmp"
+      mv "$tmp" ~/.tweakcc/.last-applied-cc-version
+    else
+      echo "WARN: tweakcc --apply had failures — marker NOT advanced." >&2
+    fi
+  }
+  if command -v flock >/dev/null 2>&1; then
+    ( exec 9>~/.tweakcc/reapply.lock; flock 9; apply_tweakcc )
+  else
+    apply_tweakcc
+  fi
+
+  # Replace tracked live files
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    src=$(echo "$line" | awk '{print $2}')   # repo path
+    dst=$(echo "$line" | awk '{print $1}')   # live path
+    mode=$(echo "$line" | awk '{print $3}')
+    [[ -e "$src" ]] || continue
+    mkdir -p "$(dirname "$dst")"
+    backup "$dst"
+    if [[ "$mode" == "subst" ]]; then
+      copy_subst "$src" "$dst"
+    else
+      cp "$src" "$dst"
+    fi
+  done < <(active_pairs)
+
+  chmod +x ~/.claude/bin/*.sh ~/.local/bin/csess 2>/dev/null || true
+
+  # Idempotently inject the source-stub into ~/.zshrc. ~/.zshrc itself is
+  # owned by the user / installers (brew, nvm, pyenv, etc. all `>>` to it);
+  # we only ever APPEND a marker-guarded one-liner so the common file gets
+  # picked up after their main body.
+  STUB_MARKER='# >>> dotfiles common <<<'
+  STUB_BODY='[ -f "$HOME/.zshrc.common" ] && . "$HOME/.zshrc.common"'
+  if [[ -f "$HOME/.zshrc" ]] && grep -qF "$STUB_MARKER" "$HOME/.zshrc"; then
+    : # already injected — leave it
+  else
+    {
+      printf '\n%s\n' "$STUB_MARKER"
+      printf '%s\n' "$STUB_BODY"
+    } >> "$HOME/.zshrc"
+    echo "==> appended dotfiles-common stub to ~/.zshrc (your existing config is untouched)"
+  fi
+
+  # Skills
+  if [[ "$OS" == "mac" ]]; then
+    # Mac: ~/.agents/skills/<name> + symlinks into ~/.claude/skills/<name>
+    mp_tmp=$(mktemp -d)
+    if git clone --depth 1 https://github.com/mattpocock/skills "$mp_tmp"; then
+      for category in engineering productivity misc; do
+        for d in "$mp_tmp/skills/$category"/*/; do
+          [[ -d "$d" ]] || continue
+          name=$(basename "$d")
+          rm -rf "$HOME/.agents/skills/$name"
+          cp -r "$d" "$HOME/.agents/skills/$name"
+          link_skill "$HOME/.agents/skills/$name" "$name"
+        done
+      done
+    else
+      echo "WARN: mattpocock/skills clone failed — skills not refreshed." >&2
+    fi
+    rm -rf "$mp_tmp"
+
+    if [[ -d shared/claude/skills ]]; then
+      for d in shared/claude/skills/*/; do
+        [[ -d "$d" ]] || continue
+        name=$(basename "$d")
+        rm -rf "$HOME/.agents/skills/$name"
+        cp -r "$d" "$HOME/.agents/skills/$name"
+        link_skill "$HOME/.agents/skills/$name" "$name"
+      done
+    fi
+  else
+    # WSL: direct copy into ~/.claude/skills/<name>
+    mp_tmp=$(mktemp -d)
+    if git clone --depth 1 https://github.com/mattpocock/skills "$mp_tmp"; then
+      for category in engineering productivity misc; do
+        for d in "$mp_tmp/skills/$category"/*/; do
+          [[ -d "$d" ]] || continue
+          name=$(basename "$d")
+          rm -rf "$HOME/.claude/skills/$name"
+          cp -r "$d" "$HOME/.claude/skills/$name"
+        done
+      done
+    else
+      echo "WARN: mattpocock/skills clone failed." >&2
+    fi
+    rm -rf "$mp_tmp"
+
+    if [[ -d shared/claude/skills ]]; then
+      for d in shared/claude/skills/*/; do
+        [[ -d "$d" ]] || continue
+        name=$(basename "$d")
+        rm -rf "$HOME/.claude/skills/$name"
+        cp -r "$d" "$HOME/.claude/skills/$name"
+      done
+    fi
+  fi
+
+  echo
+  echo "bootstrap complete (backup ts=$ts). Roll back with: ./dot restore"
+}
+
+# ─── SYNC ─────────────────────────────────────────────────────────────────────
+cmd_sync() {
+  echo "==> sync on $OS"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    src=$(echo "$line" | awk '{print $1}')   # live path
+    dst=$(echo "$line" | awk '{print $2}')   # repo path
+    mode=$(echo "$line" | awk '{print $3}')
+    [[ -e "$src" ]] || continue
+    mkdir -p "$(dirname "$dst")"
+    if [[ "$mode" == "subst" ]]; then
+      copy_unsubst "$src" "$dst"
+    else
+      cp "$src" "$dst"
+    fi
+  done < <(active_pairs)
+
+  echo "synced. git status:"
+  git status -sb
+}
+
+# ─── RESTORE ──────────────────────────────────────────────────────────────────
+cmd_restore() {
+  echo "==> restore on $OS"
+  targets=()
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    targets+=( "$(echo "$line" | awk '{print $1}')" )
+  done < <(active_pairs)
+
+  plan=()
+  found_any=false
+  for t in "${targets[@]}"; do
+    latest=$(ls -1t "${t}".bak.* 2>/dev/null | head -1 || true)
+    if [[ -n "$latest" ]]; then
+      plan+=( "$t  ←  $latest" )
+      found_any=true
+    fi
+  done
+
+  if ! $found_any; then
+    echo "no .bak.<ts> files found for any tracked target. Nothing to restore." >&2
+    exit 1
+  fi
+
+  echo "Restore plan:"
+  for line in "${plan[@]}"; do echo "  $line"; done
+  echo
+  printf 'Proceed? [y/N] '
+  read -r ans
+  case "$ans" in
+    y|Y|yes|YES) ;;
+    *) echo "aborted."; exit 0 ;;
+  esac
+
+  for t in "${targets[@]}"; do
+    latest=$(ls -1t "${t}".bak.* 2>/dev/null | head -1 || true)
+    [[ -n "$latest" ]] || continue
+    cp "$latest" "$t"
+    echo "restored: $t"
+  done
+  echo "restore done."
+}
+
+# ─── HELP / MENU ──────────────────────────────────────────────────────────────
+cmd_help() {
+  cat <<EOF
+./dot — manage dotfiles across WSL and macOS.
+
+Subcommands:
+  bootstrap   apply repo → live (one-time setup; clones+builds deps)
+  sync        capture live → repo (run before commit)
+  restore     roll back to the most recent .bak.<ts> backup
+  help        this message
+
+OS detected: $OS
+
+bootstrap installs (when missing): zinit, codex (Mac brew), RTK, ccstatusline,
+tweakcc. Also seeds ~/.zshrc.local from shared/zshrc.local.example if absent.
+
+Backups: every replaced live file is preserved at <path>.bak.<ts>. Use
+\`./dot restore\` to roll back to the latest batch.
+EOF
+}
+
+cmd_menu() {
+  while true; do
+    echo
+    echo "./dot — dotfiles manager (OS: $OS)"
+    echo "  1) bootstrap   (repo → live)"
+    echo "  2) sync        (live → repo)"
+    echo "  3) restore     (.bak.<ts> → live)"
+    echo "  4) help"
+    echo "  q) quit"
+    printf 'choose [1-4,q]: '
+    read -r choice
+    case "$choice" in
+      1) cmd_bootstrap ;;
+      2) cmd_sync ;;
+      3) cmd_restore ;;
+      4) cmd_help ;;
+      q|Q|"") echo "bye."; exit 0 ;;
+      *) echo "unknown choice: $choice" ;;
+    esac
+  done
+}
+
+# ─── Dispatch ─────────────────────────────────────────────────────────────────
+case "${1:-}" in
+  bootstrap) cmd_bootstrap ;;
+  sync)      cmd_sync ;;
+  restore)   cmd_restore ;;
+  help|-h|--help) cmd_help ;;
+  "")        cmd_menu ;;
+  *) echo "unknown subcommand: $1"; cmd_help; exit 1 ;;
+esac

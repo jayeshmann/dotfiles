@@ -2,69 +2,189 @@
 
 Personal config mirror — Claude Code, zsh, terminal — across WSL2 and macOS.
 
+One script (`./dot`), one zshrc, one repo. OS branches happen at runtime.
+
 ## Layout
 
 ```
-shared/                          # cross-platform base
-  zshrc                          → ~/.zshrc
+dot                              # single entry point: bootstrap/sync/restore/menu
+shared/                          # cross-platform — runs on both Mac and WSL
+  zshrc.common                   → ~/.zshrc.common     (cross-OS additions; sourced from ~/.zshrc)
   ccstatusline/settings.json     → ~/.config/ccstatusline/settings.json
+                                   (uses __HOME__ placeholder; bootstrap subs in $HOME)
   tweakcc/config.json            → ~/.tweakcc/config.json
   claude/
     CLAUDE.md                    → ~/.claude/CLAUDE.md
     codex-review.schema.json     → ~/.claude/codex-review.schema.json
-    settings.json                → ~/.claude/settings.json
-    bin/
-      ctx-pct-colored.sh         → ~/.claude/bin/ctx-pct-colored.sh
-      log-session.sh             → ~/.claude/bin/log-session.sh
-      tweakcc-reapply.sh         → ~/.claude/bin/tweakcc-reapply.sh   (SessionStart hook)
-      dotfiles-autosync.sh       → ~/.claude/bin/dotfiles-autosync.sh (Stop hook)
+    settings.json                → ~/.claude/settings.json   (uses $HOME, shell-evaluated)
+    bin/                         → ~/.claude/bin/<*.sh>
+    skills/<name>/               → ~/.claude/skills/<name>   (or ~/.agents/skills/ on Mac)
   codex/config.toml              → ~/.codex/config.toml
-  hermes/config.yaml             → ~/.hermes/config.yaml
+  hermes/config.yaml             → ~/.hermes/config.yaml   (WSL-only; Mac skips)
   bin/csess                      → ~/.local/bin/csess
 wsl/                             # WSL-only
-  wezterm.lua                    → /mnt/c/Users/jay/.wezterm.lua
+  wezterm.lua                    → /mnt/c/Users/<you>/.wezterm.lua
   claude-bin/notify-attention.sh → ~/.claude/bin/notify-attention.sh   (PowerShell toast)
-mac/                             # macOS-only (placeholder)
+mac/                             # macOS-only (currently empty — cmux ships native CC notifications)
 ```
 
-## Hosts
-
-| Host | Terminal | Multiplexer | Shell |
-|---|---|---|---|
-| WSL2 Ubuntu | WezTerm (Windows) | — | zsh + Starship |
-| macOS | iTerm2 / Ghostty | tmux or cmux | zsh + Starship |
-
-## Bootstrap (WSL)
+## `./dot` — one script, three actions
 
 ```bash
 cd ~/code/dotfiles
-./bootstrap-wsl.sh
+
+./dot              # interactive menu
+./dot bootstrap    # repo → live  (one-time setup; clones+builds deps)
+./dot sync         # live → repo  (run before commit)
+./dot restore      # .bak.<ts> → live  (roll back the most recent bootstrap)
+./dot help
 ```
 
-What bootstrap does:
-1. Backs up existing live configs to `*.bak.<ts>`.
-2. Pushes tracked configs to live paths.
-3. Clones+builds **ccstatusline** from main HEAD into `~/.local/share/ccstatusline`. The live `statusLine.command` in `~/.claude/settings.json` runs the built `dist/ccstatusline.js` directly — no remote refetch per status tick.
-4. Clones+builds **tweakcc** from main HEAD into `~/.local/share/tweakcc` and runs `--apply` to patch Claude Code with the preset in `shared/tweakcc/config.json`.
-5. Installs **mattpocock/skills** main HEAD into `~/.claude/skills/` (replaces existing entries so deprecations propagate).
+Mental model:
+- **bootstrap** is "apply" — writes your dotfiles into `~/...`. Backs up
+  what was there to `<file>.bak.<ts>`. Also installs missing deps (zinit,
+  codex CLI, RTK, ccstatusline, tweakcc). Run after cloning the repo on a
+  fresh machine.
+- **sync** is "capture" — pulls `~/.zshrc`, `~/.claude/...`, etc. back into
+  `shared/...` so your edits get committed and propagated to your other
+  machine on its next `git pull`. Run before every commit.
+- **restore** is "rollback" — for each tracked file, find the most recent
+  `.bak.<ts>` and copy it back. Useful if a bootstrap broke something.
 
-## Sync after local changes
+`./dot` figures out the OS itself (`$OSTYPE` → `mac` / `linux`) and branches
+internally. No `bootstrap-mac.sh` / `bootstrap-wsl.sh` to maintain in
+parallel anymore.
 
-Manual:
-```bash
-cd ~/code/dotfiles
-./sync-wsl.sh
-git add -A && git commit -m "sync" && git push
+## How OS-aware gating works
+
+zsh and bash both expose `$OSTYPE` automatically: `darwin23.x` on Mac,
+`linux-gnu` on WSL/Ubuntu. We capture it once at the top of `shared/zshrc`
+(and inside `./dot`) into a normalized `DOTFILES_OS=mac|linux|other`, then
+branch on it for the small set of things that legitimately differ:
+
+- `ls -G` (BSD) vs `ls --color=auto` (GNU) — same alias name, different body.
+- `lsof` (Mac) vs `ss` (Linux) for the claude-mem worker port probe.
+- `/opt/homebrew` vs `/usr/share` plugin paths (zsh-autosuggestions etc.).
+- Skills layout: Mac uses the `~/.agents/skills` + symlink convention
+  (cross-tool with Cursor / Copilot / OpenCode), WSL writes directly into
+  `~/.claude/skills/`.
+- Notification hook: WSL ships a PowerShell toast at `~/.claude/bin/notify-attention.sh`;
+  Mac doesn't ship one (cmux handles it). The shared `Notification` hook is
+  wrapped `[ -x ... ] && ...` so it silently no-ops without the script.
+
+The same `~/.zshrc` runs on both Mac and WSL — at runtime it picks the
+right paths. There is no `mac/zshrc` and no `wsl/zshrc`.
+
+## Cross-OS vs per-machine: the zshrc model
+
+The repo never owns `~/.zshrc`. That file stays owned by the user and the
+tool installers that append to it — `brew shellenv`, `nvm install`,
+`pyenv init`, `rustup-init`, `bun`, `gcloud install`, `rbenv init`, etc.
+That's the only sane way to keep installer-generated lines out of git AND
+out of the *other* OS's zshrc.
+
+What the repo does own:
+
+- `shared/zshrc.common` (in repo) → `~/.zshrc.common` (live).
+  Cross-OS additions: HISTFILE/setopts, aliases, **zinit + plugin list,
+  starship init, fzf keybindings, brew shellenv (Mac-guarded)**, claude-mem
+  worker check. These run last so common is the effective configuration
+  even if `~/.zshrc` had legacy duplicates. After bootstrap, delete those
+  duplicates from `~/.zshrc` to keep one source of truth. Toolchain init
+  (pyenv/nvm/bun/rbenv/cargo) and machine-specific PATHs (JDK/Android/
+  Flutter/gcloud) stay in `~/.zshrc`.
+- A single marker-guarded stub line appended once to `~/.zshrc`:
+  ```
+  # >>> dotfiles common <<<
+  [ -f "$HOME/.zshrc.common" ] && . "$HOME/.zshrc.common"
+  ```
+  `./dot bootstrap` greps for the marker and only appends if absent.
+  Re-running bootstrap is a no-op for `~/.zshrc`.
+
+So `brew install <something>` writing to `~/.zshrc` is fine — those lines
+stay machine-local and never leak into the repo.
+
+## Bootstrap prerequisites
+
+WSL2 Ubuntu:
+```sh
+sudo apt install -y jq fzf zsh-autosuggestions zsh-syntax-highlighting starship
+curl -fsSL https://bun.sh/install | bash
+# claude: https://docs.claude.com/en/docs/claude-code/setup
 ```
 
-Automatic: `dotfiles-autosync.sh` runs on Claude Code's `Stop` hook — every time a session ends it pulls, runs `sync-wsl.sh`, commits any changes (allowlisted pathspec) with `auto-sync from <hostname>`, and pushes. The hook holds a `flock` so concurrent sessions can't race, refuses to run if the index already has staged work, refuses to sync if `git pull` brought in remote changes (forces manual reconciliation), and rolls back its own commit if the push fails. Logs at `~/.local/state/dotfiles/autosync.log` (outside the repo so they never enter a commit). Failures never block CC; check the log if changes seem to drift between machines.
+macOS:
+```sh
+brew install oven-sh/bun/bun jq fzf starship zsh-autosuggestions zsh-syntax-highlighting
+# claude: https://docs.claude.com/en/docs/claude-code/setup
+```
+
+After prereqs are present, `./dot bootstrap` will install (when missing):
+zinit, codex CLI (Mac only — `brew install codex`), RTK (`rtk-ai/rtk` —
+brew on Mac, install.sh on Linux), ccstatusline (built from main HEAD),
+tweakcc (built from main HEAD).
+
+## Auto-sync on Stop hook
+
+`shared/claude/bin/dotfiles-autosync.sh` runs on Claude Code's `Stop`
+hook. It pulls the repo, runs `./dot sync`, commits the
+allowlisted-pathspec, and pushes. Holds a flock against concurrent
+sessions. Refuses to commit if the index already has staged work, refuses
+to sync if `git pull` brought in remote changes (forces manual
+reconciliation), and aborts before commit if the remote moved between
+pull and commit. Logs at `~/.local/state/dotfiles/autosync.log` (outside
+the repo). Failures never block CC.
+
+## Auto-upgrade ccstatusline + tweakcc
+
+`shared/claude/bin/upgrade-ccstatusline.sh` runs on every `SessionStart`.
+It does a quiet `git fetch origin main`; if HEAD is already current, it
+exits in a few hundred ms with no rebuild. If upstream advanced, it
+ff-merges + rebuilds via `bun install && bun run build`. Build failures
+hard-reset to the previous commit so a broken upstream commit never ships
+into your live statusline. Logs at `~/.local/state/dotfiles/upgrade-ccstatusline.log`.
+
+To pin ccstatusline (skip auto-upgrade), `touch ~/.config/ccstatusline/upgrade-disabled`.
+
+`shared/claude/bin/tweakcc-upgrade-probe.sh` runs on `SessionStart` (in the
+background, so it doesn't slow session start). It now stamps with
+`INTERVAL_DAYS=1` (was 3) — so tweakcc is at most a day behind upstream.
+The probe also checks whether newer Claude Code versions are compatible
+with the current tweakcc, and bumps `minimumVersion` in
+`~/.claude/settings.json` accordingly. Both upgrade probes are guarded by
+`~/.tweakcc/disabled` (touch the file to disable, rm to re-enable).
 
 ## Auto-reapply tweakcc on Claude Code update
 
-`tweakcc-reapply.sh` runs on `SessionStart`. It compares `claude --version` to `~/.tweakcc/.last-applied-cc-version` and re-runs `tweakcc --apply` only when CC has been upgraded — keeping the patch set in sync with whatever CC version got pulled in by Anthropic's auto-updater.
+`shared/claude/bin/tweakcc-reapply.sh` runs on `SessionStart`. It compares
+`claude --version` to `~/.tweakcc/.last-applied-cc-version` and re-runs
+`tweakcc --apply` only when CC has been upgraded — keeping the patch set
+in sync with whatever CC version got pulled in by the auto-updater.
+
+The settings.json invokes the upgrade probe with `nohup … &` (portable
+across Linux+macOS) instead of WSL's older `setsid -f` (which doesn't
+exist on BSD/macOS).
 
 ## Notes
 
-- **ccstatusline native widgets used:** `thinking-effort` (handles xhigh natively on main HEAD via PRs #314 + #252), `context-percentage-usable`, `session-usage`, `reset-timer`, `weekly-usage`, `weekly-reset-timer`, `git-branch`, `git-changes`, `git-pr`, `worktree-name`, `version`, `session-clock`, `model`, `claude-session-id`. The remaining custom-command widget is `ctx-pct-colored.sh` because no native widget does threshold-based coloring on context %.
-- **Mac differences:** zsh paths (homebrew, fzf, java) will diverge; plan to templatize `zshrc` or split per-host once Mac entries land. The PowerShell-based `notify-attention.sh` will be replaced by an `osascript` equivalent under `mac/`.
-- **hackingtool** (Z4nzu/hackingtool) is **not** auto-installed — install manually for authorized pentest engagements only: `curl -sSL https://raw.githubusercontent.com/Z4nzu/hackingtool/master/install.sh | sudo bash`.
+- **Path placeholder discipline.** Anything read by a non-shell consumer
+  (e.g. ccstatusline parsing JSON and feeding `commandPath` straight to
+  spawn) MUST use `__HOME__` in `shared/`. Anything Claude Code itself
+  evaluates as a shell command (hooks, statusLine.command) can use
+  `$HOME` literally. `./dot sync` and `./dot bootstrap` reverse the
+  substitution at the boundary.
+- **Codex review section** in `shared/claude/CLAUDE.md` is wrapped in
+  `<!-- ... -->` until you run `codex login`. Re-enable by removing the
+  HTML comment markers.
+- **RTK has a known regression** ([issue #582](https://github.com/rtk-ai/rtk/issues/582))
+  where over-compression can paradoxically increase token spend. Watch
+  your usage in the first day after enabling; revert if it regresses.
+- **Codex trusted-projects** are not committed — add per-machine via `codex`
+  itself so the repo file stays portable.
+- **Mac skills layout** — `~/.agents/skills/<name>` source-of-truth +
+  `~/.claude/skills/<name>` symlinks. Community pattern documented at
+  <https://www.ssw.com.au/rules/symlink-agents-to-claude/>. Survives switching
+  between AI editors that read different roots.
+- **hackingtool** (Z4nzu/hackingtool) is **not** auto-installed — install
+  manually for authorized pentest engagements only:
+  `curl -sSL https://raw.githubusercontent.com/Z4nzu/hackingtool/master/install.sh | sudo bash`.

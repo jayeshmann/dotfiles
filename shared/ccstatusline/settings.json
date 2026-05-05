@@ -5,7 +5,7 @@
       { "id": "dir", "type": "current-working-dir", "color": "hex:7AA2F7", "bold": true, "rawValue": true },
       { "id": "sep1pre", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "ctxlbl", "type": "custom-text", "color": "hex:565F89", "customText": "Ctx " },
-      { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 },
+      { "id": "ctxpct", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "__HOME__/.claude/bin/ctx-pct-colored.sh", "preserveColors": true, "timeout": 1500 },
       { "id": "sep1a", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "sesslbl", "type": "custom-text", "color": "hex:565F89", "customText": "Session " },
       { "id": "sesspct", "type": "session-usage", "color": "hex:2AC3DE", "bold": true, "rawValue": true },
@@ -36,7 +36,7 @@
       { "id": "sep3a", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "effort", "type": "thinking-effort", "color": "hex:FF9E64", "bold": true, "rawValue": true },
       { "id": "sep3b", "type": "separator", "color": "hex:565F89", "character": " │ " },
-      { "id": "tweakcc", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "/home/jay/.claude/bin/tweakcc-status.sh", "preserveColors": true, "timeout": 1500 },
+      { "id": "tweakcc", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "__HOME__/.claude/bin/tweakcc-status.sh", "preserveColors": true, "timeout": 1500 },
       { "id": "flex3", "type": "flex-separator" },
       { "id": "sid", "type": "claude-session-id", "color": "hex:565F89", "rawValue": true }
     ]

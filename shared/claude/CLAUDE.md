@@ -42,7 +42,11 @@ Before editing a project you haven't touched:
 3. `git log --oneline -20` for recent patterns.
 4. Check the existing test framework before running tests — don't assume.
 
-## External code review (Codex)
+<!-- ## External code review (Codex)
+
+DISABLED 2026-05-04 — codex CLI not yet logged in on this Mac.
+Re-enable by removing the surrounding HTML comment markers once
+`codex login` has been run and `codex exec --help` works.
 
 Run Codex as a **synchronous pre-commit reviewer** over every staged
 diff. Fix every critical finding before committing or pushing — pushes
@@ -122,6 +126,8 @@ source change you already pushed through review.
 Small, well-scoped, individually-revertable commits with green tests at
 each step. Don't bundle steps into a mega-commit just because codex is
 fast. The discipline is for me, not for codex.
+
+-->
 
 ## Monitor mode (background log/event watching)
 Monitor is the single most useful debugging tool I have. **Use it as much as possible**, especially when:

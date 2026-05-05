@@ -1,0 +1,39 @@
+# ==========================================
+# STARSHIP: AI & SPEED OPTIMIZED
+# ==========================================
+
+# command_timeout caps how long any single starship sub-command
+# (typically `git status`/`git rev-parse` for the git modules) is
+# allowed to run before being dropped. The previous 10ms was so
+# aggressive that git timed out on every prompt — see the
+# "Executing command \"/opt/homebrew/bin/git\" timed out" warning.
+# 1500ms gives git status enough headroom on macOS (Spotlight,
+# iCloud-backed dirs, large worktrees) without making the prompt
+# feel laggy. starship's default is 500ms; bump if you regularly
+# work in repos where 1500 still isn't enough.
+command_timeout = 1500
+
+# 1. Main Prompt Layout
+format = """
+$directory$git_branch$git_status$cmd_duration
+$character"""
+
+[directory]
+style = "bold cyan"
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+symbol = "🌱 "
+style = "bold purple"
+
+[git_status]
+disabled = false
+
+[cmd_duration]
+min_time = 500
+format = "took [$duration]($style) "
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
