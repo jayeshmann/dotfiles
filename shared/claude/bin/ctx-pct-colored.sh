@@ -12,10 +12,7 @@ USABLE=$((WINDOW * 80 / 100))
 
 CTX=0
 if [[ -n "$TRANSCRIPT" && -f "$TRANSCRIPT" ]]; then
-  # `tac` is GNU coreutils-only; macOS doesn't ship it. Filter forward, then
-  # take the LAST match — equivalent to `tac | head -1` and portable across
-  # Linux + BSD/macOS without a coreutils dependency.
-  LATEST=$(jq -c 'select(.message.usage and (.isSidechain != true) and (.isApiErrorMessage != true))' "$TRANSCRIPT" 2>/dev/null | tail -n 1)
+  LATEST=$(tac "$TRANSCRIPT" 2>/dev/null | jq -c 'select(.message.usage and (.isSidechain != true) and (.isApiErrorMessage != true))' 2>/dev/null | head -1)
   if [[ -n "$LATEST" ]]; then
     INPUT_T=$(jq -r '.message.usage.input_tokens // 0' <<<"$LATEST")
     CACHE_R=$(jq -r '.message.usage.cache_read_input_tokens // 0' <<<"$LATEST")

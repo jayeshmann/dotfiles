@@ -1,10 +1,19 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
+[projects."/home/jay/code"]
+trust_level = "trusted"
 
-# Trusted project roots are added per-machine via `codex` itself; we don't
-# bake host-specific absolute paths into the dotfiles repo. The previous
-# /home/jay/code and /tmp/gocomet-spec-test-* entries were removed at
-# repo bootstrap-mac.sh import.
+[projects."/tmp/gocomet-spec-test-2026-04-29T22-57-10Z/codex"]
+trust_level = "trusted"
+
+[projects."/tmp/gocomet-spec-test-2026-04-30T05-08-35Z/codex"]
+trust_level = "trusted"
+
+[projects."/tmp/gocomet-spec-test-2026-04-30T05-47-38Z/codex"]
+trust_level = "trusted"
+
+[projects."/tmp/gocomet-spec-test-2026-04-30T05-58-22Z/codex"]
+trust_level = "trusted"
 
 [tui]
 status_line = [

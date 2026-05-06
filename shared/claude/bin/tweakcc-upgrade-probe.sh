@@ -25,7 +25,7 @@
 
 set -uo pipefail
 
-INTERVAL_DAYS=1
+INTERVAL_DAYS=3
 TWEAKCC_REPO="${HOME}/.local/share/tweakcc"
 TWEAKCC_DIST="${TWEAKCC_REPO}/dist/index.mjs"
 TWEAKCC_HOME="${HOME}/.tweakcc"
@@ -78,7 +78,10 @@ export -f log reapply
       log "tweakcc: $old_sha -> $new_sha"
       if git -C "$TWEAKCC_REPO" merge --ff-only origin/main >>"$LOG" 2>&1; then
         build_ok=false
-        if command -v bun >/dev/null 2>&1; then
+        if command -v pnpm >/dev/null 2>&1; then
+          ( cd "$TWEAKCC_REPO" && pnpm install && pnpm run build ) >>"$LOG" 2>&1 && build_ok=true
+        fi
+        if ! $build_ok && command -v bun >/dev/null 2>&1; then
           ( cd "$TWEAKCC_REPO" && bun install && bun run build ) >>"$LOG" 2>&1 && build_ok=true
         fi
         if ! $build_ok; then

@@ -8,9 +8,12 @@ set -u
 MARKER="${HOME}/.tweakcc/.last-applied-cc-version"
 TWEAKCC_DIST="${HOME}/.local/share/tweakcc/dist/index.mjs"
 
-# Read tweakcc version from package.json (cheap; statusline runs frequently)
+# Tracking origin/main, so identify the build by commit short-sha + commit date.
+# Fall back to package.json if the repo isn't a git checkout.
 TWEAKCC_VER="?"
-if [[ -f "${HOME}/.local/share/tweakcc/package.json" ]]; then
+if [[ -d "${HOME}/.local/share/tweakcc/.git" ]]; then
+  TWEAKCC_VER=$(git -C "${HOME}/.local/share/tweakcc" log -1 --format='%h@%cs' 2>/dev/null || echo '?')
+elif [[ -f "${HOME}/.local/share/tweakcc/package.json" ]]; then
   TWEAKCC_VER=$(awk -F'"' '/"version":/{print $4; exit}' "${HOME}/.local/share/tweakcc/package.json")
 fi
 
