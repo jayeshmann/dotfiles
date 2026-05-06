@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/jay/.claude/bin/notify-attention.sh"
+            "command": "[ -x \"$HOME/.claude/bin/notify-attention.sh\" ] && \"$HOME/.claude/bin/notify-attention.sh\""
           }
         ]
       }
@@ -24,15 +24,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/jay/.claude/bin/log-session.sh"
+            "command": "$HOME/.claude/bin/log-session.sh"
           },
           {
             "type": "command",
-            "command": "/home/jay/.claude/bin/tweakcc-reapply.sh"
+            "command": "$HOME/.claude/bin/upgrade-ccstatusline.sh"
           },
           {
             "type": "command",
-            "command": "setsid -f /home/jay/.claude/bin/tweakcc-upgrade-probe.sh </dev/null >/dev/null 2>&1"
+            "command": "[ -e \"$HOME/.tweakcc/disabled\" ] || \"$HOME/.claude/bin/tweakcc-reapply.sh\""
+          },
+          {
+            "type": "command",
+            "command": "[ -e \"$HOME/.tweakcc/disabled\" ] || nohup \"$HOME/.claude/bin/tweakcc-upgrade-probe.sh\" </dev/null >/dev/null 2>&1 &"
           }
         ]
       }
@@ -42,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/jay/.claude/bin/dotfiles-autosync.sh"
+            "command": "$HOME/.claude/bin/dotfiles-autosync.sh"
           }
         ]
       }
@@ -61,7 +65,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "node /home/jay/.local/share/ccstatusline/dist/ccstatusline.js",
+    "command": "node $HOME/.local/share/ccstatusline/dist/ccstatusline.js",
     "padding": 0
   },
   "enabledPlugins": {
