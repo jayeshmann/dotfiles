@@ -32,11 +32,26 @@ ts=$(date +%s)
 backup() { [[ -e "$1" ]] && cp "$1" "$1.bak.$ts" || true; }
 copy_subst()   { sed "s|__HOME__|${HOME}|g" "$1" > "$2"; }
 copy_unsubst() { sed "s|${HOME}|__HOME__|g" "$1" > "$2"; }
+# Strip codex's [projects.*] trust blocks during live→repo sync. Trust paths
+# are per-machine state (codex appends them when you trust a project) and use
+# absolute paths that differ across OSes — they don't belong in the repo.
+# Cross-OS settings (model, [tui], etc.) flow through unchanged.
+copy_codex_filter() {
+  awk '
+    /^\[projects\./ { skip=1; next }
+    /^\[/           { skip=0 }
+    !skip
+  ' "$1" > "$2"
+}
 link_skill()   { local src="$1" name="$2"; rm -rf "${HOME}/.claude/skills/${name}"; ln -s "$src" "${HOME}/.claude/skills/${name}"; }
 
 # ─── Tracked file pairs (live ↔ repo) ─────────────────────────────────────────
-# Each entry: "live_path repo_path subst_mode" where subst_mode is "plain"
-# or "subst" (latter = __HOME__↔$HOME on the way through).
+# Each entry: "live_path repo_path subst_mode". subst_mode:
+#   plain        — straight cp in both directions
+#   subst        — __HOME__↔$HOME substitution
+#   codex_filter — sync (live→repo) strips [projects.*] trust blocks;
+#                  bootstrap (repo→live) is plain copy
+
 SYNC_PAIRS=(
   "$HOME/.zshrc.common                          shared/zshrc.common                           plain"
   "$HOME/.claude/settings.json                  shared/claude/settings.json                   plain"
@@ -47,7 +62,7 @@ SYNC_PAIRS=(
   "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"
   "$HOME/.claude/bin/dotfiles-autosync.sh       shared/claude/bin/dotfiles-autosync.sh        plain"
   "$HOME/.config/starship.toml                  shared/starship/starship.toml                 plain"
-  "$HOME/.codex/config.toml                     shared/codex/config.toml                      plain"
+  "$HOME/.codex/config.toml                     shared/codex/config.toml                      codex_filter"
   "$HOME/.local/bin/csess                       shared/bin/csess                              plain"
   "$HOME/.config/ccstatusline/settings.json     shared/ccstatusline/settings.json             subst"
 )
@@ -223,11 +238,11 @@ cmd_sync() {
     mode=$(echo "$line" | awk '{print $3}')
     [[ -e "$src" ]] || continue
     mkdir -p "$(dirname "$dst")"
-    if [[ "$mode" == "subst" ]]; then
-      copy_unsubst "$src" "$dst"
-    else
-      cp "$src" "$dst"
-    fi
+    case "$mode" in
+      subst)        copy_unsubst       "$src" "$dst" ;;
+      codex_filter) copy_codex_filter  "$src" "$dst" ;;
+      *)            cp                 "$src" "$dst" ;;
+    esac
   done < <(active_pairs)
 
   echo "synced. git status:"

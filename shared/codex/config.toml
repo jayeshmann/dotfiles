@@ -1,11 +1,9 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
 
-# Trusted project roots are added per-machine via `codex` itself; we don't
-# bake host-specific absolute paths into the dotfiles repo. The previous
-# /home/jay/code and /tmp/gocomet-spec-test-* entries were removed at
-# repo bootstrap-mac.sh import.
-
+# Per-machine trust paths ([projects."..."] blocks) are added at runtime by
+# `codex` itself when you trust a project, and stripped from the live→repo
+# sync via codex_filter in ./dot. Re-trust per machine after `./dot bootstrap`.
 [tui]
 status_line = [
   "current-dir",
