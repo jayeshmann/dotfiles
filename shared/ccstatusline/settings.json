@@ -35,8 +35,6 @@
       { "id": "model", "type": "model", "color": "hex:7DCFFF", "bold": true, "rawValue": true },
       { "id": "sep3a", "type": "separator", "color": "hex:565F89", "character": " │ " },
       { "id": "effort", "type": "thinking-effort", "color": "hex:FF9E64", "bold": true, "rawValue": true },
-      { "id": "sep3b", "type": "separator", "color": "hex:565F89", "character": " │ " },
-      { "id": "tweakcc", "type": "custom-command", "color": "hex:9ECE6A", "commandPath": "__HOME__/.claude/bin/tweakcc-status.sh", "preserveColors": true, "timeout": 1500 },
       { "id": "flex3", "type": "flex-separator" },
       { "id": "sid", "type": "claude-session-id", "color": "hex:565F89", "rawValue": true }
     ]

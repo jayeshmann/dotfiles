@@ -12,7 +12,6 @@ shared/                          # cross-platform — runs on both Mac and WSL
   zshrc.common                   → ~/.zshrc.common     (cross-OS additions; sourced from ~/.zshrc)
   ccstatusline/settings.json     → ~/.config/ccstatusline/settings.json
                                    (uses __HOME__ placeholder; bootstrap subs in $HOME)
-  tweakcc/config.json            → ~/.tweakcc/config.json
   claude/
     CLAUDE.md                    → ~/.claude/CLAUDE.md
     codex-review.schema.json     → ~/.claude/codex-review.schema.json
@@ -43,8 +42,8 @@ cd ~/code/dotfiles
 Mental model:
 - **bootstrap** is "apply" — writes your dotfiles into `~/...`. Backs up
   what was there to `<file>.bak.<ts>`. Also installs missing deps (zinit,
-  codex CLI, RTK, ccstatusline, tweakcc). Run after cloning the repo on a
-  fresh machine.
+  codex CLI, RTK, ccstatusline). Run after cloning the repo on a fresh
+  machine.
 - **sync** is "capture" — pulls `~/.zshrc`, `~/.claude/...`, etc. back into
   `shared/...` so your edits get committed and propagated to your other
   machine on its next `git pull`. Run before every commit.
@@ -121,8 +120,7 @@ brew install oven-sh/bun/bun jq fzf starship zsh-autosuggestions zsh-syntax-high
 
 After prereqs are present, `./dot bootstrap` will install (when missing):
 zinit, codex CLI (Mac only — `brew install codex`), RTK (`rtk-ai/rtk` —
-brew on Mac, install.sh on Linux), ccstatusline (built from main HEAD),
-tweakcc (built from main HEAD).
+brew on Mac, install.sh on Linux), ccstatusline (built from main HEAD).
 
 ## Auto-sync on Stop hook
 
@@ -135,7 +133,7 @@ reconciliation), and aborts before commit if the remote moved between
 pull and commit. Logs at `~/.local/state/dotfiles/autosync.log` (outside
 the repo). Failures never block CC.
 
-## Auto-upgrade ccstatusline + tweakcc
+## Auto-upgrade ccstatusline
 
 `shared/claude/bin/upgrade-ccstatusline.sh` runs on every `SessionStart`.
 It does a quiet `git fetch origin main`; if HEAD is already current, it
@@ -146,24 +144,9 @@ into your live statusline. Logs at `~/.local/state/dotfiles/upgrade-ccstatusline
 
 To pin ccstatusline (skip auto-upgrade), `touch ~/.config/ccstatusline/upgrade-disabled`.
 
-`shared/claude/bin/tweakcc-upgrade-probe.sh` runs on `SessionStart` (in the
-background, so it doesn't slow session start). It now stamps with
-`INTERVAL_DAYS=1` (was 3) — so tweakcc is at most a day behind upstream.
-The probe also checks whether newer Claude Code versions are compatible
-with the current tweakcc, and bumps `minimumVersion` in
-`~/.claude/settings.json` accordingly. Both upgrade probes are guarded by
-`~/.tweakcc/disabled` (touch the file to disable, rm to re-enable).
-
-## Auto-reapply tweakcc on Claude Code update
-
-`shared/claude/bin/tweakcc-reapply.sh` runs on `SessionStart`. It compares
-`claude --version` to `~/.tweakcc/.last-applied-cc-version` and re-runs
-`tweakcc --apply` only when CC has been upgraded — keeping the patch set
-in sync with whatever CC version got pulled in by the auto-updater.
-
-The settings.json invokes the upgrade probe with `nohup … &` (portable
-across Linux+macOS) instead of WSL's older `setsid -f` (which doesn't
-exist on BSD/macOS).
+Claude Code itself updates via its own native auto-updater
+(`autoUpdatesChannel: "stable"` in `shared/claude/settings.json`); the repo
+no longer pins or patches the CC binary.
 
 ## Notes
 

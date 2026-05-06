@@ -34,36 +34,6 @@ copy_subst()   { sed "s|__HOME__|${HOME}|g" "$1" > "$2"; }
 copy_unsubst() { sed "s|${HOME}|__HOME__|g" "$1" > "$2"; }
 link_skill()   { local src="$1" name="$2"; rm -rf "${HOME}/.claude/skills/${name}"; ln -s "$src" "${HOME}/.claude/skills/${name}"; }
 
-# Resolve the install dir matching `claude --version`. Claude's native installer
-# leaves multiple versions on disk under ~/.local/share/claude/versions/<v>/;
-# tweakcc refuses to guess between them. Echo the active version's dir so the
-# caller can `export TWEAKCC_CC_INSTALLATION_PATH=$(detect_cc_install)`.
-detect_cc_install() {
-  # tweakcc accepts either a cli.js path (Node install) or a native-binary
-  # path. The native installer's "binary" at versions/<v> is a FILE, not a
-  # dir — so test with -e (file or dir) and pass the symlink target itself,
-  # never its dirname.
-  local v cand
-  v=$(claude --version 2>/dev/null | head -1 | awk '{print $1}')
-  [[ -z "$v" ]] && return 1
-  cand="$HOME/.local/share/claude/versions/$v"
-  if [[ -e "$cand" ]]; then
-    printf '%s' "$cand"
-    return 0
-  fi
-  local bin target
-  bin=$(command -v claude 2>/dev/null) || return 1
-  if [[ -L "$bin" ]]; then
-    target=$(readlink "$bin")
-    case "$target" in
-      /*) printf '%s' "$target" ;;
-      *)  printf '%s' "$(cd "$(dirname "$bin")" && cd "$(dirname "$target")" 2>/dev/null && pwd -P)/$(basename "$target")" ;;
-    esac
-  else
-    printf '%s' "$bin"
-  fi
-}
-
 # ─── Tracked file pairs (live ↔ repo) ─────────────────────────────────────────
 # Each entry: "live_path repo_path subst_mode" where subst_mode is "plain"
 # or "subst" (latter = __HOME__↔$HOME on the way through).
@@ -74,12 +44,8 @@ SYNC_PAIRS=(
   "$HOME/.claude/codex-review.schema.json       shared/claude/codex-review.schema.json        plain"
   "$HOME/.claude/bin/ctx-pct-colored.sh         shared/claude/bin/ctx-pct-colored.sh          plain"
   "$HOME/.claude/bin/log-session.sh             shared/claude/bin/log-session.sh              plain"
-  "$HOME/.claude/bin/tweakcc-reapply.sh         shared/claude/bin/tweakcc-reapply.sh          plain"
-  "$HOME/.claude/bin/tweakcc-status.sh          shared/claude/bin/tweakcc-status.sh           plain"
-  "$HOME/.claude/bin/tweakcc-upgrade-probe.sh   shared/claude/bin/tweakcc-upgrade-probe.sh    plain"
   "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"
   "$HOME/.claude/bin/dotfiles-autosync.sh       shared/claude/bin/dotfiles-autosync.sh        plain"
-  "$HOME/.tweakcc/config.json                   shared/tweakcc/config.json                    plain"
   "$HOME/.config/starship.toml                  shared/starship/starship.toml                 plain"
   "$HOME/.codex/config.toml                     shared/codex/config.toml                      plain"
   "$HOME/.local/bin/csess                       shared/bin/csess                              plain"
@@ -118,7 +84,7 @@ cmd_bootstrap() {
   fi
 
   mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.local/bin \
-           ~/.tweakcc ~/.local/share ~/.local/state/dotfiles \
+           ~/.local/share ~/.local/state/dotfiles \
            ~/.claude/skills ~/.agents/skills
 
   # zinit (both OSes — shared/zshrc requires it for turbo loading)
@@ -153,40 +119,6 @@ cmd_bootstrap() {
   fi
   (cd "$ccs" && bun install && bun run build)
   [[ -f "$ccs/dist/ccstatusline.js" ]] || { echo "ERR: ccstatusline build failed" >&2; exit 1; }
-
-  # tweakcc (build main HEAD + apply)
-  tcc="$HOME/.local/share/tweakcc"
-  if [[ ! -d "$tcc/.git" ]]; then
-    git clone https://github.com/Piebald-AI/tweakcc "$tcc"
-  else
-    git -C "$tcc" pull --ff-only
-  fi
-  (cd "$tcc" && bun install && bun run build)
-  [[ -f "$tcc/dist/index.mjs" ]] || { echo "ERR: tweakcc build failed" >&2; exit 1; }
-
-  backup ~/.tweakcc/config.json && cp shared/tweakcc/config.json ~/.tweakcc/config.json
-
-  apply_tweakcc() {
-    local cc_install
-    cc_install=$(detect_cc_install || true)
-    if [[ -z "$cc_install" ]]; then
-      echo "WARN: could not detect Claude install dir; tweakcc may pick the wrong version." >&2
-    fi
-    if TWEAKCC_CC_INSTALLATION_PATH="$cc_install" node "$tcc/dist/index.mjs" --apply; then
-      local cc_ver tmp
-      cc_ver=$(claude --version | awk '{print $1}')
-      tmp=$(mktemp ~/.tweakcc/.last-applied-cc-version.XXXXXX)
-      printf '%s' "$cc_ver" > "$tmp"
-      mv "$tmp" ~/.tweakcc/.last-applied-cc-version
-    else
-      echo "WARN: tweakcc --apply had failures — marker NOT advanced." >&2
-    fi
-  }
-  if command -v flock >/dev/null 2>&1; then
-    ( exec 9>~/.tweakcc/reapply.lock; flock 9; apply_tweakcc )
-  else
-    apply_tweakcc
-  fi
 
   # Replace tracked live files
   while IFS= read -r line; do
@@ -358,8 +290,8 @@ Subcommands:
 
 OS detected: $OS
 
-bootstrap installs (when missing): zinit, codex (Mac brew), RTK, ccstatusline,
-tweakcc. Also seeds ~/.zshrc.local from shared/zshrc.local.example if absent.
+bootstrap installs (when missing): zinit, codex (Mac brew), RTK, ccstatusline.
+Also seeds ~/.zshrc.local from shared/zshrc.local.example if absent.
 
 Backups: every replaced live file is preserved at <path>.bak.<ts>. Use
 \`./dot restore\` to roll back to the latest batch.

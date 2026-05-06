@@ -18,7 +18,7 @@ STATE_DIR="$HOME/.local/state/dotfiles"
 LOG="$STATE_DIR/upgrade-ccstatusline.log"
 LOCK="$STATE_DIR/upgrade-ccstatusline.lock"
 
-# Disable knob — match the tweakcc convention.
+# Disable knob.
 [[ -e "$HOME/.config/ccstatusline/upgrade-disabled" ]] && exit 0
 
 [[ -d "$REPO_DIR/.git" ]] || exit 0

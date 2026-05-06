@@ -76,7 +76,6 @@ mkdir -p "$STATE_DIR"
     shared/zshrc
     shared/claude
     shared/ccstatusline
-    shared/tweakcc
     shared/codex
     shared/hermes
     shared/bin
