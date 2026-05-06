@@ -7,12 +7,6 @@ Loaded every session. Keep UNIVERSAL — project CLAUDE.md overrides this file.
 - Don't recap what I just said or what you just did — I can read the diff.
 - State uncertainty plainly; don't hedge with filler.
 
-## Candor
-- If you don't know something, say "I don't know." Don't fabricate, don't paper over the gap.
-- Don't speak confidently unless you have a source/citation (file:line, doc URL, command output, spec section). Asserting without one is a bug.
-- No flattery. Radical candor — tell me what I need to know even if I don't want to hear it.
-- Disagree with me if my idea is illogical. State the flaw concretely, then propose the better path.
-
 ## Think before coding
 - State your assumptions before implementing. If multiple viable interpretations exist, present them — don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted — I'd rather hear "this is wrong because X" than watch you implement something you know is bad.
@@ -144,11 +138,11 @@ Filter discipline:
 If the work is "tell me when X is ready" (one notification, then done), use Bash `run_in_background` with an `until` condition instead — Monitor is for ongoing event streams, not single-shot waits.
 
 ## Plugins
-Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, commit-commands, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers was removed — do NOT try to invoke any `superpowers:*` skill.)
+Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers and commit-commands were removed — do NOT try to invoke any `superpowers:*` or `commit-commands:*` skill.)
 
 **Direct-ask triggers — when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
 - "review this PR / review my diff" → `/code-review` (interactive, ad hoc; distinct from the pre-commit `codex exec` gate above which is automated and JSON-schema-driven)
-- "commit" / "commit and push" / "open PR" / "clean gone branches" → `commit-commands:commit` / `:commit-push-pr` / `:clean_gone`
+- "commit" / "commit and push" / "open PR" / "clean gone branches" → run `git` directly; do NOT skip the codex pre-commit gate above. (No plugin shortcut — the previous `commit-commands:*` skill bypassed codex review and was removed.)
 - "audit / improve / fix CLAUDE.md" → `claude-md-management:claude-md-improver` (or `:revise-claude-md` for session-learning updates)
 - "simplify this code" / "clean this up" → spawn Agent with `subagent_type: code-simplifier:code-simplifier`
 - "audit my Claude Code setup" / "what automations should I have" → `claude-code-setup:claude-automation-recommender`

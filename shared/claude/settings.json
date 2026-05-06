@@ -79,7 +79,6 @@
     "claude-md-management@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
