@@ -138,14 +138,10 @@ Filter discipline:
 If the work is "tell me when X is ready" (one notification, then done), use Bash `run_in_background` with an `until` condition instead — Monitor is for ongoing event streams, not single-shot waits.
 
 ## Plugins
-Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, code-review, code-simplifier, claude-md-management, security-guidance, claude-code-setup, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers and commit-commands were removed — do NOT try to invoke any `superpowers:*` or `commit-commands:*` skill.)
+Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers, commit-commands, code-review, code-simplifier, claude-md-management, security-guidance, claude-code-setup, ralph-loop, and pr-review-toolkit were removed — do NOT try to invoke any of their skills/commands.)
 
 **Direct-ask triggers — when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
-- "review this PR / review my diff" → `/code-review` (interactive, ad hoc; distinct from the pre-commit `codex exec` gate above which is automated and JSON-schema-driven)
 - "commit" / "commit and push" / "open PR" / "clean gone branches" → run `git` directly; do NOT skip the codex pre-commit gate above. (No plugin shortcut — the previous `commit-commands:*` skill bypassed codex review and was removed.)
-- "audit / improve / fix CLAUDE.md" → `claude-md-management:claude-md-improver` (or `:revise-claude-md` for session-learning updates)
-- "simplify this code" / "clean this up" → spawn Agent with `subagent_type: code-simplifier:code-simplifier`
-- "audit my Claude Code setup" / "what automations should I have" → `claude-code-setup:claude-automation-recommender`
 - TDD / "red-green-refactor" / "test-first" → user skill `tdd` (mattpocock).
 
 **Frontend skill routing — both are installed; pick based on the project:**
