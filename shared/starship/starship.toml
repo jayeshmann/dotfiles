@@ -1,5 +1,10 @@
 add_newline = true
-command_timeout = 500
+# command_timeout caps how long any single starship sub-command (typically
+# `git status` / `git rev-parse`) is allowed to run before being dropped.
+# 500ms is starship's default but causes git timeouts on macOS in repos
+# under Spotlight / iCloud-backed dirs / large worktrees. 1500ms gives
+# git enough headroom without making the prompt feel laggy.
+command_timeout = 1500
 
 format = """
 $directory\

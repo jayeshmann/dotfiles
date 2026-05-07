@@ -1,5 +1,6 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
+personality = "pragmatic"
 
 # Per-machine trust paths ([projects."..."] blocks) are added at runtime by
 # `codex` itself when you trust a project, and stripped from the live→repo
