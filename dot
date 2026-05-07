@@ -81,28 +81,77 @@ active_pairs() {
 }
 
 # ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
+install_prereqs() {
+  # Install everything `./dot bootstrap` and shared/zshrc.common need at runtime.
+  # Idempotent: skips packages already on PATH so re-runs are cheap.
+  #
+  # Mac: everything via brew (including bun via the oven-sh tap). Linux:
+  # jq/fzf/git/curl via apt; starship and bun via their official curl-pipe-sh
+  # installers because neither ships in stock Ubuntu repos.
+  # zsh-autosuggestions / zsh-syntax-highlighting are intentionally NOT
+  # installed at the system level — `shared/zshrc.common` loads them through
+  # zinit from upstream, so apt/brew copies would be dead weight.
+  if [[ "$OS" == "mac" ]]; then
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "ERR: brew not installed. Install Homebrew first: https://brew.sh" >&2
+      exit 1
+    fi
+    local pkgs=()
+    command -v jq       >/dev/null 2>&1 || pkgs+=( jq )
+    command -v fzf      >/dev/null 2>&1 || pkgs+=( fzf )
+    command -v starship >/dev/null 2>&1 || pkgs+=( starship )
+    command -v git      >/dev/null 2>&1 || pkgs+=( git )
+    command -v bun      >/dev/null 2>&1 || pkgs+=( oven-sh/bun/bun )
+    if (( ${#pkgs[@]} )); then
+      echo "==> brew install ${pkgs[*]}"
+      brew install "${pkgs[@]}"
+    fi
+  elif [[ "$OS" == "linux" ]]; then
+    if ! command -v apt-get >/dev/null 2>&1; then
+      echo "ERR: non-apt Linux detected. Install curl, jq, fzf, starship, git, bun manually, then re-run." >&2
+      exit 1
+    fi
+    local pkgs=()
+    command -v curl >/dev/null 2>&1 || pkgs+=( curl )
+    command -v jq   >/dev/null 2>&1 || pkgs+=( jq )
+    command -v fzf  >/dev/null 2>&1 || pkgs+=( fzf )
+    command -v git  >/dev/null 2>&1 || pkgs+=( git )
+    if (( ${#pkgs[@]} )); then
+      echo "==> sudo apt-get install -y ${pkgs[*]}"
+      sudo apt-get update -qq
+      sudo apt-get install -y "${pkgs[@]}"
+    fi
+    if ! command -v starship >/dev/null 2>&1; then
+      echo "==> installing starship (curl | sh — official installer; uses sudo to write /usr/local/bin)"
+      curl -fsSL https://starship.rs/install.sh | sh -s -- -y
+    fi
+    if ! command -v bun >/dev/null 2>&1; then
+      echo "==> installing bun (curl | bash)"
+      curl -fsSL https://bun.sh/install | bash
+      export PATH="$HOME/.bun/bin:$PATH"
+    fi
+  else
+    echo "ERR: unsupported OS ($OSTYPE). Bootstrap supports macOS and Linux." >&2
+    exit 1
+  fi
+
+  # Claude Code: stays manual because first-run is an interactive auth flow.
+  if ! command -v claude >/dev/null 2>&1; then
+    echo "ERR: claude not installed. Follow https://docs.claude.com/en/docs/claude-code/setup, then re-run." >&2
+    exit 1
+  fi
+}
+
 cmd_bootstrap() {
   echo "==> bootstrap on $OS (ts=$ts)"
 
-  # Prereqs (universal)
-  for cmd in bun git claude jq; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      echo "ERR: $cmd not installed. Install first." >&2
-      [[ "$OS" == "mac"   ]] && echo "    e.g. brew install oven-sh/bun/bun jq" >&2
-      [[ "$OS" == "linux" ]] && echo "    e.g. sudo apt install jq && curl -fsSL https://bun.sh/install | bash" >&2
-      exit 1
-    fi
-  done
-  if [[ "$OS" == "mac" ]] && ! command -v brew >/dev/null 2>&1; then
-    echo "ERR: brew not installed (Mac requires it for codex/RTK auto-install)." >&2
-    exit 1
-  fi
+  install_prereqs
 
   mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.local/bin \
            ~/.local/share ~/.local/state/dotfiles \
            ~/.claude/skills ~/.agents/skills
 
-  # zinit (both OSes — shared/zshrc requires it for turbo loading)
+  # zinit (both OSes — shared/zshrc.common requires it for turbo loading)
   ZINIT_HOME="$HOME/.local/share/zinit/zinit.git"
   if [[ ! -d "$ZINIT_HOME/.git" ]]; then
     echo "==> installing zinit"
@@ -305,8 +354,12 @@ Subcommands:
 
 OS detected: $OS
 
-bootstrap installs (when missing): zinit, codex (Mac brew), RTK, ccstatusline.
-Also seeds ~/.zshrc.local from shared/zshrc.local.example if absent.
+bootstrap installs (when missing):
+  - Mac (brew): jq, fzf, starship, git, bun (oven-sh tap), codex
+  - Linux (apt): curl, jq, fzf, git
+  - Linux (curl|sh): starship, bun (not in stock Ubuntu repos)
+  - Cross-OS from source/git: zinit, RTK, ccstatusline
+Only \`claude\` itself stays manual — the first-run auth is interactive.
 
 Backups: every replaced live file is preserved at <path>.bak.<ts>. Use
 \`./dot restore\` to roll back to the latest batch.

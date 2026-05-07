@@ -73,7 +73,7 @@ mkdir -p "$STATE_DIR"
   fi
 
   TRACKED_PATHS=(
-    shared/zshrc
+    shared/zshrc.common
     shared/claude
     shared/ccstatusline
     shared/codex

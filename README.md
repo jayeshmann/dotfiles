@@ -41,12 +41,15 @@ cd ~/code/dotfiles
 
 Mental model:
 - **bootstrap** is "apply" — writes your dotfiles into `~/...`. Backs up
-  what was there to `<file>.bak.<ts>`. Also installs missing deps (zinit,
-  codex CLI, RTK, ccstatusline). Run after cloning the repo on a fresh
-  machine.
-- **sync** is "capture" — pulls `~/.zshrc`, `~/.claude/...`, etc. back into
-  `shared/...` so your edits get committed and propagated to your other
-  machine on its next `git pull`. Run before every commit.
+  what was there to `<file>.bak.<ts>`. Also installs missing deps end-to-end
+  on a fresh machine: apt/brew packages, `bun`, `starship`, `zinit`, `codex`
+  (Mac), RTK, and ccstatusline. The only thing it can't install for you is
+  `claude` itself — first-run auth is interactive — so install Claude Code
+  first (<https://docs.claude.com/en/docs/claude-code/setup>), then run
+  bootstrap once.
+- **sync** is "capture" — pulls `~/.zshrc.common`, `~/.claude/...`, etc.
+  back into `shared/...` so your edits get committed and propagated to your
+  other machine on its next `git pull`. Run before every commit.
 - **restore** is "rollback" — for each tracked file, find the most recent
   `.bak.<ts>` and copy it back. Useful if a bootstrap broke something.
 
@@ -57,13 +60,15 @@ parallel anymore.
 ## How OS-aware gating works
 
 zsh and bash both expose `$OSTYPE` automatically: `darwin23.x` on Mac,
-`linux-gnu` on WSL/Ubuntu. We capture it once at the top of `shared/zshrc`
+`linux-gnu` on WSL/Ubuntu. We capture it once at the top of `shared/zshrc.common`
 (and inside `./dot`) into a normalized `DOTFILES_OS=mac|linux|other`, then
 branch on it for the small set of things that legitimately differ:
 
 - `ls -G` (BSD) vs `ls --color=auto` (GNU) — same alias name, different body.
 - `lsof` (Mac) vs `ss` (Linux) for the claude-mem worker port probe.
-- `/opt/homebrew` vs `/usr/share` plugin paths (zsh-autosuggestions etc.).
+- Package manager: `brew install` (Mac) vs `sudo apt-get install` (Linux)
+  for the apt/brew prereqs that bootstrap fetches. zsh plugins themselves
+  are loaded via zinit from upstream on both OSes — no system copies.
 - Skills layout: Mac uses the `~/.agents/skills` + symlink convention
   (cross-tool with Cursor / Copilot / OpenCode), WSL writes directly into
   `~/.claude/skills/`.
@@ -105,22 +110,24 @@ stay machine-local and never leak into the repo.
 
 ## Bootstrap prerequisites
 
-WSL2 Ubuntu:
-```sh
-sudo apt install -y jq fzf zsh-autosuggestions zsh-syntax-highlighting starship
-curl -fsSL https://bun.sh/install | bash
-# claude: https://docs.claude.com/en/docs/claude-code/setup
-```
+Just `claude` — install it first
+(<https://docs.claude.com/en/docs/claude-code/setup>) so its initial
+interactive auth is out of the way. On Mac you also need `brew`
+(<https://brew.sh>) since it's the package manager bootstrap hands work to.
 
-macOS:
-```sh
-brew install oven-sh/bun/bun jq fzf starship zsh-autosuggestions zsh-syntax-highlighting
-# claude: https://docs.claude.com/en/docs/claude-code/setup
-```
+Everything else is auto-installed by `./dot bootstrap` on first run:
 
-After prereqs are present, `./dot bootstrap` will install (when missing):
-zinit, codex CLI (Mac only — `brew install codex`), RTK (`rtk-ai/rtk` —
-brew on Mac, install.sh on Linux), ccstatusline (built from main HEAD).
+- **macOS (brew).** `jq`, `fzf`, `starship`, `git`, `bun` (oven-sh tap),
+  `codex`.
+- **Linux (apt).** `curl`, `jq`, `fzf`, `git`.
+- **Linux (curl-pipe-sh).** `starship` and `bun` — neither ships in stock
+  Ubuntu repos, so bootstrap runs their official installers.
+- **Cross-OS from source / git.** `zinit`, RTK (`rtk-ai/rtk`), `ccstatusline`
+  (built from `main` HEAD).
+
+zsh plugins (`zsh-autosuggestions`, `zsh-syntax-highlighting`, `fzf-tab`)
+are loaded by zinit directly from upstream on both OSes — bootstrap does
+**not** install the apt/brew copies. They were redundant.
 
 ## Auto-sync on Stop hook
 
@@ -145,7 +152,7 @@ into your live statusline. Logs at `~/.local/state/dotfiles/upgrade-ccstatusline
 To pin ccstatusline (skip auto-upgrade), `touch ~/.config/ccstatusline/upgrade-disabled`.
 
 Claude Code itself updates via its own native auto-updater
-(`autoUpdatesChannel: "stable"` in `shared/claude/settings.json`); the repo
+(`autoUpdatesChannel: "latest"` in `shared/claude/settings.json`); the repo
 no longer pins or patches the CC binary.
 
 ## Notes
