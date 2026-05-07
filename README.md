@@ -129,17 +129,6 @@ zsh plugins (`zsh-autosuggestions`, `zsh-syntax-highlighting`, `fzf-tab`)
 are loaded by zinit directly from upstream on both OSes — bootstrap does
 **not** install the apt/brew copies. They were redundant.
 
-## Auto-sync on Stop hook
-
-`shared/claude/bin/dotfiles-autosync.sh` runs on Claude Code's `Stop`
-hook. It pulls the repo, runs `./dot sync`, commits the
-allowlisted-pathspec, and pushes. Holds a flock against concurrent
-sessions. Refuses to commit if the index already has staged work, refuses
-to sync if `git pull` brought in remote changes (forces manual
-reconciliation), and aborts before commit if the remote moved between
-pull and commit. Logs at `~/.local/state/dotfiles/autosync.log` (outside
-the repo). Failures never block CC.
-
 ## Auto-upgrade ccstatusline
 
 `shared/claude/bin/upgrade-ccstatusline.sh` runs on every `SessionStart`.

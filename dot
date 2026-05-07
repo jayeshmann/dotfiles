@@ -60,7 +60,6 @@ SYNC_PAIRS=(
   "$HOME/.claude/bin/ctx-pct-colored.sh         shared/claude/bin/ctx-pct-colored.sh          plain"
   "$HOME/.claude/bin/log-session.sh             shared/claude/bin/log-session.sh              plain"
   "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"
-  "$HOME/.claude/bin/dotfiles-autosync.sh       shared/claude/bin/dotfiles-autosync.sh        plain"
   "$HOME/.config/starship.toml                  shared/starship/starship.toml                 plain"
   "$HOME/.codex/config.toml                     shared/codex/config.toml                      codex_filter"
   "$HOME/.local/bin/csess                       shared/bin/csess                              plain"
@@ -144,6 +143,15 @@ install_prereqs() {
 
 cmd_bootstrap() {
   echo "==> bootstrap on $OS (ts=$ts)"
+
+  # Pull latest from origin before applying so bootstrap writes the newest
+  # tracked content. --ff-only refuses to merge if local has diverged — in
+  # that case bootstrap stops and the user reconciles manually.
+  if git rev-parse --git-dir >/dev/null 2>&1 && git remote get-url origin >/dev/null 2>&1; then
+    echo "==> updating dotfiles from origin (git pull --ff-only)"
+    git fetch -q origin
+    git pull --ff-only
+  fi
 
   install_prereqs
 
