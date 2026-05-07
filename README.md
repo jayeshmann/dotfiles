@@ -65,6 +65,7 @@ zsh and bash both expose `$OSTYPE` automatically: `darwin23.x` on Mac,
 branch on it for the small set of things that legitimately differ:
 
 - `ls -G` (BSD) vs `ls --color=auto` (GNU) — same alias name, different body.
+- `du -d 1` (BSD) vs `du --max-depth=1` (GNU) — `bigdirs` alias picks per OS.
 - `lsof` (Mac) vs `ss` (Linux) for the claude-mem worker port probe.
 - Package manager: `brew install` (Mac) vs `sudo apt-get install` (Linux)
   for the apt/brew prereqs that bootstrap fetches. zsh plugins themselves

@@ -53,6 +53,15 @@ HISTSIZE=50000
 SAVEHIST=50000
 setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_REDUCE_BLANKS APPEND_HISTORY INC_APPEND_HISTORY
 
+# ────── Completion zstyles (read on demand — order vs compinit doesn't matter) ─
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' rehash true
+zstyle ':completion:*' verbose yes
+zstyle ':completion:*:descriptions' format '%B%d%b'
+zstyle ':completion:*:warnings' format 'No matches for: %d'
+
 # ────── zinit + completion (with double-init guard) ─────────────────────────
 # Skip zinit init if it's already been loaded by ~/.zshrc — re-sourcing
 # zinit.zsh in the same shell can clobber its internal state and re-run
@@ -92,6 +101,7 @@ alias cc='claude'
 alias ccr='claude --resume'
 alias ccy='claude --dangerously-skip-permissions'   # YOLO — only in worktrees/containers
 alias cv='claude --voice'
+alias claudeignore='cp ~/.config/claude/claudeignore.template .claudeignore'
 
 # Git
 alias gs='git status -sb'
@@ -110,6 +120,16 @@ if [[ "$DOTFILES_OS" == "mac" ]]; then
 else
   alias ll='ls -lah --color=auto'
   alias la='ls -A --color=auto'
+fi
+
+# Disk usage — `du` depth flag differs BSD (-d N) vs GNU (--max-depth=N).
+# bigdirs relies on the `du -h` alias above to add human-readable sizes.
+alias df='df -h'
+alias du='du -h'
+if [[ "$DOTFILES_OS" == "mac" ]]; then
+  alias bigdirs='du -d 1 | sort -rh | head -11'
+else
+  alias bigdirs='du --max-depth=1 | sort -rh | head -11'
 fi
 
 # bat as cat (only if bat is installed)
