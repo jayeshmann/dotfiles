@@ -57,6 +57,7 @@ SYNC_PAIRS=(
   "$HOME/.claude/settings.json                  shared/claude/settings.json                   plain"
   "$HOME/.claude/CLAUDE.md                      shared/claude/CLAUDE.md                       plain"
   "$HOME/.claude/codex-review.schema.json       shared/claude/codex-review.schema.json        plain"
+  "$HOME/.claude/codex-options-review.schema.json shared/claude/codex-options-review.schema.json plain"
   "$HOME/.claude/bin/ctx-pct-colored.sh         shared/claude/bin/ctx-pct-colored.sh          plain"
   "$HOME/.claude/bin/log-session.sh             shared/claude/bin/log-session.sh              plain"
   "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"

@@ -15,6 +15,7 @@ shared/                          # cross-platform — runs on both Mac and WSL
   claude/
     CLAUDE.md                    → ~/.claude/CLAUDE.md
     codex-review.schema.json     → ~/.claude/codex-review.schema.json
+    codex-options-review.schema.json → ~/.claude/codex-options-review.schema.json
     settings.json                → ~/.claude/settings.json   (uses $HOME, shell-evaluated)
     bin/                         → ~/.claude/bin/<*.sh>
     skills/<name>/               → ~/.claude/skills/<name>   (or ~/.agents/skills/ on Mac)

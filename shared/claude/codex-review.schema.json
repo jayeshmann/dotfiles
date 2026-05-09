@@ -29,7 +29,10 @@
               "invariant-violation",
               "test-coverage",
               "perf",
-              "data-loss"
+              "data-loss",
+              "codebase-mismatch",
+              "dead-code-introduced",
+              "related-issue"
             ]
           },
           "file": { "type": "string" },

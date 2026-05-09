@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexOptionsReview",
+  "description": "Schema for Codex's independent review of Claude's proposed options or recommended approach. Codex evaluates each option, makes its own pick, and surfaces concerns Claude's analysis missed.",
+  "type": "object",
+  "required": [
+    "verdict",
+    "summary",
+    "option_assessments",
+    "codex_recommendation",
+    "claude_recommendation_check",
+    "missed_concerns"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "enum": ["AGREE", "PARTIAL", "DISAGREE"],
+      "description": "AGREE: Codex picks Claude's option for substantively the same reasons. PARTIAL: same option but materially different reasoning, OR a close call between two viable options. DISAGREE: Codex picks a different option (including 'none-of-the-above')."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One short paragraph: Codex's read of the situation and where it agrees / diverges from Claude's framing."
+    },
+    "option_assessments": {
+      "type": "array",
+      "description": "Per-option assessment for each approach Claude proposed.",
+      "items": {
+        "type": "object",
+        "required": ["option_label", "viability", "strengths", "weaknesses"],
+        "additionalProperties": false,
+        "properties": {
+          "option_label": {
+            "type": "string",
+            "description": "Label/identifier of the option as Claude described it (e.g. 'Option A', or the heading Claude used)."
+          },
+          "viability": {
+            "enum": ["sound", "viable-but-suboptimal", "flawed", "broken"]
+          },
+          "strengths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "weaknesses": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "codex_recommendation": {
+      "type": "object",
+      "required": ["chosen_option", "reasoning"],
+      "additionalProperties": false,
+      "properties": {
+        "chosen_option": {
+          "type": "string",
+          "description": "The option Codex would pick. Use 'none-of-the-above' if Codex thinks Claude missed a better path; describe that path in 'reasoning'."
+        },
+        "reasoning": { "type": "string" }
+      }
+    },
+    "claude_recommendation_check": {
+      "type": "object",
+      "required": ["claude_pick", "matches_codex", "delta"],
+      "additionalProperties": false,
+      "properties": {
+        "claude_pick": {
+          "type": "string",
+          "description": "What Claude recommended (option label, or 'no-recommendation' if Claude only listed options without picking)."
+        },
+        "matches_codex": { "type": "boolean" },
+        "delta": {
+          "type": ["string", "null"],
+          "description": "If matches_codex is false, the substantive disagreement; null if they match."
+        }
+      }
+    },
+    "missed_concerns": {
+      "type": "array",
+      "description": "Trade-offs, risks, or alternatives Codex saw that Claude's analysis did not surface. Empty array if none.",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -50,10 +50,63 @@ Before editing a project you haven't touched:
 
 ## External code review (Codex)
 
-Run Codex as a **synchronous pre-commit reviewer** over every staged
-diff. Fix every critical finding before committing or pushing — pushes
-only carry already-passed commits. Codex catches what diff-reread plus
+Run Codex at **two synchronous checkpoints**:
+
+1. **Options review** — every time you present me options or recommend
+   between approaches (see "Options review" below).
+2. **Pre-commit review** — every staged diff before commit (see
+   "Per-commit workflow" below).
+
+Fix every critical finding before committing or pushing — pushes only
+carry already-passed commits. Codex catches what diff-reread plus
 tests miss; the bar is shipping nothing it would flag.
+
+**Options review (pre-implementation):**
+
+Whenever you present me options or recommend between approaches —
+every time, no exceptions — first run codex against your analysis.
+Surface BOTH your read and codex's read so I can decide with two
+opinions. Skip only when I've already picked the option, or the
+choice is purely cosmetic (variable naming, formatter style, etc.).
+
+Workflow:
+
+1. Draft your options / recommendation as text. Write it to
+   `/tmp/claude-options.md` with this structure:
+   ```
+   ## Problem
+   <what I'm being asked to decide>
+
+   ## Options
+   ### Option A: <label>
+   <description, trade-offs>
+   ### Option B: <label>
+   ...
+
+   ## Claude's recommendation
+   <which option, why — or "no recommendation" if listing only>
+   ```
+
+2. Run codex (read-only). Pass `--skip-git-repo-check` so this works
+   from any cwd, including non-repo dirs:
+   ```bash
+   cat /tmp/claude-options.md | codex exec \
+     --sandbox read-only \
+     --skip-git-repo-check \
+     --output-schema ~/.claude/codex-options-review.schema.json \
+     -o /tmp/codex-options.json \
+     "Independently evaluate the options/approach in <stdin>. Apply
+      this repo's AGENTS.md (auto-loaded from cwd) if present.
+      Return JSON per schema: verdict AGREE|PARTIAL|DISAGREE,
+      per-option assessment, your own recommendation (use
+      'none-of-the-above' if a better path was missed), and any
+      concerns Claude's analysis missed."
+   ```
+
+3. Present BOTH analyses to me in the same response: my options and
+   recommendation, then codex's verdict, recommendation, and
+   missed-concerns. Don't filter codex's findings — show
+   disagreements raw, even when codex is wrong, so I can judge.
 
 **Per-commit workflow:**
 
@@ -78,29 +131,80 @@ tests miss; the bar is shipping nothing it would flag.
      backlog item.
    - No secrets, no logs of credentials, no PII in error messages.
 
-2. **Run codex against the staged diff** (read-only, JSON verdict):
+2. **Build the context bundle and run codex** (read-only, JSON verdict):
    ```bash
-   git diff --cached | codex exec \
+   # Resolve the active Claude Code session transcript from cwd.
+   # Claude Code maps cwd → ~/.claude/projects/<cwd-with-/-and-.-replaced-by-->/.
+   # Only accept a transcript modified within the last 60 minutes
+   # (avoid loading a stale session from a previous day's work).
+   project_dir="$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')"
+   session_jsonl=$(find "$project_dir" -maxdepth 1 -name '*.jsonl' -mmin -60 \
+     -exec ls -t {} + 2>/dev/null | head -1)
+   {
+     echo "=== CONVERSATION ==="
+     if [[ -f "$session_jsonl" ]]; then
+       # Codex CLI caps stdin at 1,048,576 chars. Reserve ~150KB for
+       # the diff + prompt + framing, give conversation ~900KB. If the
+       # transcript is bigger, tail it (most recent context wins) and
+       # drop the (likely-partial) leading line.
+       bytes=$(wc -c < "$session_jsonl")
+       if (( bytes > 900000 )); then
+         echo "(truncated: showing tail ~900KB of ${bytes}-byte transcript)"
+         tail -c 900000 "$session_jsonl" | tail -n +2
+       else
+         cat "$session_jsonl"
+       fi
+     else
+       echo "(no Claude Code session transcript at $project_dir)"
+     fi
+     echo ""
+     echo "=== DIFF ==="
+     git diff --cached
+   } | codex exec \
      --sandbox read-only \
      --output-schema ~/.claude/codex-review.schema.json \
      -o /tmp/codex-review.json \
-     "Review the staged diff piped on <stdin> against this repo's
-      AGENTS.md (auto-loaded from cwd). Apply the project's stated
-      review priorities. Return JSON per schema: verdict
-      APPROVED|REVISE, plus critical findings and nits."
+     "Review the staged change against this repo's AGENTS.md
+      (auto-loaded from cwd). The <stdin> bundle has two blocks:
+      === CONVERSATION === (full Claude Code session transcript so
+      you can see the original ask, the reasoning, and any prior
+      corrections — judge intent vs. implementation) and === DIFF ===
+      (the staged changes).
+
+      Beyond the diff itself, scan the broader codebase for:
+        - codebase-mismatch: callers/imports/refs of renamed or
+          removed symbols that weren't updated, signature changes
+          whose call sites still pass the old shape, schema/contract
+          drift between producer and consumer.
+        - dead-code-introduced: functions / imports / files / config
+          keys / feature flags this diff has just made unused.
+        - related-issue: pre-existing bugs or smells in code adjacent
+          to the diff that the diff brushes against and should
+          arguably fix or flag.
+
+      Apply the project's stated review priorities. Return JSON per
+      schema: verdict APPROVED|REVISE, plus critical findings (use
+      the new categories where appropriate) and nits."
    ```
    - Codex auto-loads `AGENTS.md` from cwd — **do not cat it into the
      prompt**. If a project section deserves focus (e.g. realtime
      audio rules, append-only migrations), name it in the prompt by
-     section number — that's cheaper than re-passing the file. The
-     `<stdin>` block carries the diff; `codex exec --help` confirms
-     "If stdin is piped and a prompt is also provided, stdin is
-     appended as a `<stdin>` block."
+     section number — that's cheaper than re-passing the file.
    - `~/.claude/codex-review.schema.json` defines the
      verdict/critical/nits contract — must exist (it ships in this
-     config). OpenAI strict-mode requires `required` to enumerate
-     every property in each object; nullable optional fields use
+     config). The `category` enum now includes `codebase-mismatch`,
+     `dead-code-introduced`, and `related-issue` for the whole-repo
+     scan. OpenAI strict-mode requires `required` to enumerate every
+     property in each object; nullable optional fields use
      `["type", "null"]`.
+   - The conversation block is large — full session JSONL, often
+     hundreds of KB. Accept the token cost; it's the price of giving
+     codex enough context to judge intent vs. implementation. The
+     codex CLI caps stdin at 1 MiB, so transcripts above ~900 KB are
+     tail-truncated automatically (most recent context wins). If the
+     transcript is missing (fresh session, restored cwd, or
+     committing from a non-session shell), codex falls back to
+     diff-only review — fine, just note it in your reply.
    - Use `codex exec`, not `codex review` — only `exec` supports
      `--output-schema` for deterministic gating.
    - Never `--dangerously-bypass-approvals-and-sandbox` for review.
