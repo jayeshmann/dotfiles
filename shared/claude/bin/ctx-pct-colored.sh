@@ -27,8 +27,8 @@ fi
 PCT=$(awk "BEGIN { p=${CTX}/${USABLE}*100; if (p>100) p=100; printf \"%.1f\", p }")
 PCT_INT=${PCT%.*}
 
-if   (( PCT_INT >= 70 )); then COLOR=$'\033[1;31m'   # bold red
-elif (( PCT_INT >= 50 )); then COLOR=$'\033[1;33m'   # bold yellow
+if   (( PCT_INT >= 40 )); then COLOR=$'\033[1;31m'   # bold red
+elif (( PCT_INT >= 30 )); then COLOR=$'\033[1;33m'   # bold yellow
 else                            COLOR=$'\033[1;32m'  # bold green
 fi
 RESET=$'\033[0m'
