@@ -21,7 +21,6 @@ shared/                          # cross-platform — runs on both Mac and WSL
     skills/<name>/               → ~/.claude/skills/<name>   (or ~/.agents/skills/ on Mac)
   codex/config.toml              → ~/.codex/config.toml
   hermes/config.yaml             → ~/.hermes/config.yaml   (WSL-only; Mac skips)
-  bin/csess                      → ~/.local/bin/csess
 wsl/                             # WSL-only
   wezterm.lua                    → /mnt/c/Users/<you>/.wezterm.lua
   claude-bin/notify-attention.sh → ~/.claude/bin/notify-attention.sh   (PowerShell toast)

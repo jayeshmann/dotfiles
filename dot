@@ -63,7 +63,6 @@ SYNC_PAIRS=(
   "$HOME/.claude/bin/upgrade-ccstatusline.sh    shared/claude/bin/upgrade-ccstatusline.sh     plain"
   "$HOME/.config/starship.toml                  shared/starship/starship.toml                 plain"
   "$HOME/.codex/config.toml                     shared/codex/config.toml                      codex_filter"
-  "$HOME/.local/bin/csess                       shared/bin/csess                              plain"
   "$HOME/.config/ccstatusline/settings.json     shared/ccstatusline/settings.json             subst"
 )
 # Linux-only extras
@@ -156,7 +155,7 @@ cmd_bootstrap() {
 
   install_prereqs
 
-  mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex ~/.local/bin \
+  mkdir -p ~/.claude/bin ~/.config/ccstatusline ~/.codex \
            ~/.local/share ~/.local/state/dotfiles \
            ~/.claude/skills ~/.agents/skills
 
@@ -209,7 +208,7 @@ cmd_bootstrap() {
     fi
   done < <(active_pairs)
 
-  chmod +x ~/.claude/bin/*.sh ~/.local/bin/csess 2>/dev/null || true
+  chmod +x ~/.claude/bin/*.sh 2>/dev/null || true
 
   # Idempotently inject the source-stub into ~/.zshrc. ~/.zshrc itself is
   # owned by the user / installers (brew, nvm, pyenv, etc. all `>>` to it);

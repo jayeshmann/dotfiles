@@ -47,14 +47,6 @@ if [[ "$DOTFILES_OS" == "mac" ]]; then
   fi
 fi
 
-# ────── User bin (csess + ad-hoc scripts; universal) ────────────────────────
-# `./dot bootstrap` installs csess into ~/.local/bin on both Mac and WSL.
-# Guard against double-prepending across re-sources.
-case ":$PATH:" in
-  *":$HOME/.local/bin:"*) ;;
-  *) export PATH="$HOME/.local/bin:$PATH" ;;
-esac
-
 # ────── History ─────────────────────────────────────────────────────────────
 HISTFILE=~/.zsh_history
 HISTSIZE=50000
