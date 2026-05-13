@@ -165,14 +165,20 @@ Workflow:
    {
      echo "=== CONVERSATION ==="
      if [[ -f "$session_jsonl" ]]; then
-       # Codex CLI caps stdin at 1,048,576 chars. Reserve ~150KB for
-       # the diff + prompt + framing, give conversation ~900KB. If the
-       # transcript is bigger, tail it (most recent context wins) and
-       # drop the (likely-partial) leading line.
+       # Cap conversation at ~450KB (~180k tokens at observed
+       # ~2.4 chars/token JSONL density). The binding limit is the
+       # model context window, not the codex CLI's 1MB stdin cap:
+       # gpt-5.5 has a 272k-token window (~258k effective at 95%),
+       # and the bundle must leave room for codex's base prompt
+       # (~6k), AGENTS.md auto-load (~5-10k), the diff (up to
+       # ~20k), reasoning CoT (~30k), and the JSON verdict (~5k).
+       # Drop the leading line after the tail since it's likely a
+       # partial JSONL entry. (Earlier cap was 900KB sized to the
+       # stdin limit; that overflowed the model window.)
        bytes=$(wc -c < "$session_jsonl")
-       if (( bytes > 900000 )); then
-         echo "(truncated: showing tail ~900KB of ${bytes}-byte transcript)"
-         tail -c 900000 "$session_jsonl" | tail -n +2
+       if (( bytes > 450000 )); then
+         echo "(truncated: showing tail ~450KB of ${bytes}-byte transcript)"
+         tail -c 450000 "$session_jsonl" | tail -n +2
        else
          cat "$session_jsonl"
        fi
@@ -222,11 +228,14 @@ Workflow:
    - The conversation block is large — full session JSONL, often
      hundreds of KB. Accept the token cost; it's the price of giving
      codex enough context to judge intent vs. implementation. The
-     codex CLI caps stdin at 1 MiB, so transcripts above ~900 KB are
-     tail-truncated automatically (most recent context wins). If the
-     transcript is missing (fresh session, restored cwd, or
-     committing from a non-session shell), codex falls back to
-     diff-only review — fine, just note it in your reply.
+     binding limit is gpt-5.5's 272k-token context window (~258k
+     usable), not the codex CLI's 1 MiB stdin cap; transcripts
+     above ~450 KB are tail-truncated automatically so the bundle
+     leaves room for codex's base prompt, AGENTS.md, the diff,
+     reasoning CoT, and the JSON verdict (most recent context
+     wins). If the transcript is missing (fresh session, restored
+     cwd, or committing from a non-session shell), codex falls
+     back to diff-only review — fine, just note it in your reply.
    - Use `codex exec`, not `codex review` — only `exec` supports
      `--output-schema` for deterministic gating.
    - Never `--dangerously-bypass-approvals-and-sandbox` for review.
