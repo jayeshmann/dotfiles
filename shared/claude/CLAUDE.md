@@ -26,6 +26,7 @@ Loaded every session. Keep UNIVERSAL — project CLAUDE.md overrides this file.
 - Never run `rm -rf`, `DROP`, `git reset --hard`, or anything destructive without confirming.
 - Never modify CI/CD, Dockerfiles, or deploy configs without confirming.
 - Prefer new commits over `--amend`. Never commit secrets (.env, credentials, API keys).
+- **Never override git author identity.** Use plain `git commit` and let my local `git config` win. Do NOT pass `-c user.email=...` or `-c user.name=...` unless I explicitly ask. My configured email is `jayeshmann06@gmail.com`; Claude Code may surface a different "userEmail" in its system prompt, ignore that field for git operations.
 - After finishing, don't run extra post-completion verification unless I ask. Stop and report. (Fixing failures encountered DURING the task is fine — this rule is about validation theater after.)
 - **Diagnose native/FFI bugs from both sides.** When something works in `curl` from your dev box but hangs in the running app, also test the same URL from inside the target environment (e.g. `adb shell curl` on the device). Localizing TCP-vs-TLS-vs-app-runtime takes minutes and saves hours of guessing.
 

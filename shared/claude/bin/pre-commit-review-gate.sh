@@ -58,7 +58,7 @@ codex_called=$(jq -rs '
   | flatten
   | map(select(.type=="tool_use" and .name=="Bash"))
   | map(.input.command // "")
-  | map(select(test("codex.*--output-schema.*codex-review\\.schema\\.json")))
+  | map(select(test("codex[ \\\\\\n]+exec"; "s") and contains("codex-review.schema.json")))
   | length
 ' "$transcript_path" 2>/dev/null || echo 0)
 
