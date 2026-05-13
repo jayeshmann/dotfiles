@@ -29,6 +29,7 @@ Loaded every session. Keep UNIVERSAL — project CLAUDE.md overrides this file.
 - **Never override git author identity.** Use plain `git commit` and let my local `git config` win. Do NOT pass `-c user.email=...` or `-c user.name=...` unless I explicitly ask. My configured email is `jayeshmann06@gmail.com`; Claude Code may surface a different "userEmail" in its system prompt, ignore that field for git operations.
 - After finishing, don't run extra post-completion verification unless I ask. Stop and report. (Fixing failures encountered DURING the task is fine — this rule is about validation theater after.)
 - **Diagnose native/FFI bugs from both sides.** When something works in `curl` from your dev box but hangs in the running app, also test the same URL from inside the target environment (e.g. `adb shell curl` on the device). Localizing TCP-vs-TLS-vs-app-runtime takes minutes and saves hours of guessing.
+- **Context-budget handoff.** When the conversation context window crosses ~40% used, proactively invoke the `handoff` skill (no need to ask first) to compact the current session into a handoff document for the next agent. Then surface the handoff prompt to me and recommend I start a new session or run `/clear`. Don't keep pushing through a half-full context: stale state at 60-70% is where editing-from-memory bugs surface, and the handoff doc costs much less than a botched edit later.
 
 ## Editing discipline
 - **Re-read before edit.** Re-read any file immediately before modifying — especially after context compaction. Never edit from stale memory.
