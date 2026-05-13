@@ -53,6 +53,10 @@ When I ask you to research anything (products, tools, libraries, frameworks, ser
 
 Quote source URLs in your response so I can verify. Surface disagreement between sources rather than averaging it away.
 
+**Weight recent signal heavily.** A review from 6 months ago about a fast-moving product (LLM tool, JS framework, GPU, peripheral, SaaS) is often actively misleading; a thread from last week describing a real bug or new pricing tier is gold. When sources span multiple time windows, lead with the most recent and flag stale claims explicitly ("this 18-month-old Reddit thread says X, but the package's v3 release in March changed Y"). If the only sources are older than 6 months and the domain moves quickly, say so out loud and look harder before answering.
+
+**Check actuals, not just reviews.** Reviews lag releases. Always verify the current state directly: the latest version number on the project's release page, the model number actually shipping today, current pricing on the vendor's order page, the most recent release notes / changelog. For a product or tool just launched (last week, last month), there may be no reviews yet — go to the vendor page, the GitHub releases, the spec sheet, and side-by-side compare against the previous generation on paper. Say "no community reviews yet" out loud rather than padding the answer with stale comparisons.
+
 **For products, purchases, or recommendations specifically:**
 - Identify the **price point of diminishing returns** ("most of the value lands at $X; spending past $Y buys marginal gains; $Z is for the niche use case Q").
 - Lay out **value tiers** explicitly: budget pick, mainstream pick, enthusiast/no-compromise pick, with the trade-off named at each step.
