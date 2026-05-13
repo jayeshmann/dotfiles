@@ -12,10 +12,22 @@ USABLE=$((WINDOW * 80 / 100))
 
 CTX=0
 if [[ -n "$TRANSCRIPT" && -f "$TRANSCRIPT" ]]; then
-  # `tac` is GNU coreutils-only; macOS doesn't ship it. Filter forward, then
-  # take the LAST match — equivalent to `tac | head -1` and portable across
-  # Linux + BSD/macOS without a coreutils dependency.
-  LATEST=$(jq -c 'select(.message.usage and (.isSidechain != true) and (.isApiErrorMessage != true))' "$TRANSCRIPT" 2>/dev/null | tail -n 1)
+  # Pick the most-recent main-chain usage entry by TIMESTAMP, not file order.
+  # Claude Code writes entries non-monotonically (parallel tool calls, replayed
+  # lines on resume), so `tail -n 1` can lock onto a stale historical row —
+  # which is what makes the context % look "stuck" after `--resume`. Matches
+  # upstream ccstatusline jsonl-metrics.ts:208-223.
+  #
+  # `inputs | try fromjson catch empty` reads each JSONL line as a raw string
+  # and recovers from per-line parse errors — a single malformed row (we've
+  # seen this in real transcripts) would otherwise abort jq and freeze the
+  # widget on a stale entry. Mirrors upstream's parseJsonlLine try/catch.
+  LATEST=$(jq -nRc '
+    [inputs
+     | try fromjson catch empty
+     | select(.message.usage and (.isSidechain != true) and (.isApiErrorMessage != true) and .timestamp)
+    ] | max_by(.timestamp) // empty
+  ' "$TRANSCRIPT" 2>/dev/null)
   if [[ -n "$LATEST" ]]; then
     INPUT_T=$(jq -r '.message.usage.input_tokens // 0' <<<"$LATEST")
     CACHE_R=$(jq -r '.message.usage.cache_read_input_tokens // 0' <<<"$LATEST")
