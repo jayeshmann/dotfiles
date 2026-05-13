@@ -5,6 +5,7 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "model": "opus[1m]",
   "hooks": {
     "Notification": [
       {
@@ -37,6 +38,20 @@
           {
             "type": "command",
             "command": "rtk hook claude"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/bin/pre-commit-review-gate.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/bin/options-review-gate.sh"
           }
         ]
       }
@@ -60,13 +75,15 @@
       "source": {
         "source": "github",
         "repo": "thedotmack/claude-mem"
-      }
+      },
+      "autoUpdate": true
     },
     "ui-ux-pro-max-skill": {
       "source": {
         "source": "git",
         "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,
@@ -74,6 +91,5 @@
   "autoUpdatesChannel": "latest",
   "verbose": false,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "model": "opus[1m]"
+  "skipAutoPermissionPrompt": true
 }
