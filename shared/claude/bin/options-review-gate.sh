@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# Stop hook: gate options-presentation behind codex review.
+# Stop hook: gate options-presentation behind codex second-opinion review.
 #
 # Fires when Claude finishes generating an assistant message. If that message
-# presents labeled options (Option A/B/C ...) AND a recommendation, but the
-# turn did NOT include a codex options-review invocation, the hook blocks the
-# turn and forces Claude to run codex before presenting again.
+# presents labeled options (Option/Approach/Path/Plan/Strategy A/B/1/2 ...)
+# AND a recommendation, but the turn did NOT include a codex second-opinion
+# invocation, the hook blocks the turn and forces Claude to run codex before
+# presenting again.
 #
-# Per ~/.claude/CLAUDE.md "External code review (Codex)" / "Options review
-# (pre-implementation)".
+# Conservative by design: only catches the labeled-options-plus-pick pattern,
+# the case most often forgotten. Broader cases (single recommendation,
+# design judgment, technical answer) are Claude's responsibility under
+# CLAUDE.md but not auto-gated here — auto-gating every recommendation
+# would be too noisy.
+#
+# Per ~/.claude/CLAUDE.md "External code review (Codex)" /
+# "Second-opinion review (pre-action)".
 #
 # Fails open on any unexpected error — never accidentally blocks.
 
@@ -46,9 +53,11 @@ fi
 
 # Detect options-presentation pattern.
 # Conservative: needs at least 2 labeled options AND recommendation language.
-# Matches: ### Option A: (CLAUDE.md doc format), **Option A**, **(A)**, - **(A)**,
-# - **Option A**, leading "Option A " at line start.
-options_count=$(printf '%s' "$last_text" | grep -cE '(^#{1,6}[[:space:]]+Option [A-Z]\b|\*\*Option [A-Z]\b|\*\*\([A-Z]\)\*\*|^- \*\*\([A-Z]\)|^- \*\*Option [A-Z]|^Option [A-Z]\b)' 2>/dev/null || echo 0)
+# Labels: Option|Approach|Path|Plan|Strategy followed by [A-Z] or [0-9]+
+# (e.g. "Option A", "Approach 1", "Path B", "Plan 2").
+# Forms: ### <Label> X: (heading), **<Label> X**, **(X)**, - **(X)**,
+# - **<Label> X**, leading "<Label> X " at line start.
+options_count=$(printf '%s' "$last_text" | grep -cE '(^#{1,6}[[:space:]]+(Option|Approach|Path|Plan|Strategy) ([A-Z]|[0-9]+)\b|\*\*(Option|Approach|Path|Plan|Strategy) ([A-Z]|[0-9]+)\b|\*\*\(([A-Z]|[0-9]+)\)\*\*|^- \*\*\(([A-Z]|[0-9]+)\)|^- \*\*(Option|Approach|Path|Plan|Strategy) ([A-Z]|[0-9]+)|^(Option|Approach|Path|Plan|Strategy) ([A-Z]|[0-9]+)\b)' 2>/dev/null || echo 0)
 # Matches: "My recommendation:", "Claude'"'"'s recommendation", "I'"'"'d pick/recommend/go with",
 # heading forms like "## Recommendation" / "### Claude'"'"'s recommendation",
 # and "Recommendation:" / "Recommended:" line starters.
@@ -58,7 +67,7 @@ if [[ "$options_count" -lt 2 || "$recommend_hits" -lt 1 ]]; then
   exit 0
 fi
 
-# Check the last few assistant turns for a codex options-review Bash call.
+# Check the last few assistant turns for a codex second-opinion Bash call.
 codex_called=$(jq -rs '
   map(select(.type=="assistant"))
   | reverse
@@ -75,8 +84,8 @@ if [[ "$codex_called" -gt 0 ]]; then
   exit 0
 fi
 
-# Gate: block the turn and instruct Claude to run codex options-review first.
+# Gate: block the turn and instruct Claude to run codex second-opinion first.
 jq -n '{
   decision: "block",
-  reason: "Options-review gate: your last message presents options and a recommendation, but no codex options-review ran in this turn. Per ~/.claude/CLAUDE.md (External code review (Codex) > Options review (pre-implementation)): write your options to /tmp/claude-options.md using the documented schema, run codex exec --sandbox read-only --skip-git-repo-check --output-schema ~/.claude/codex-options-review.schema.json -o /tmp/codex-options.json on it, then present BOTH analyses (yours and codex'"'"'s verdict / recommendation / missed-concerns) in the same response. Skip only when the user has already picked the option, or the choice is purely cosmetic (naming, formatter style). If you believe this trigger is a false positive (e.g., recap of a past comparison), say so explicitly in your retry."
+  reason: "Second-opinion gate: your last message presents labeled options and a recommendation, but no codex second-opinion ran in this turn. Per ~/.claude/CLAUDE.md (External code review (Codex) > Second-opinion review (pre-action)): run codex in ONE bash call using a heredoc — `codex exec --sandbox read-only --skip-git-repo-check --output-schema ~/.claude/codex-options-review.schema.json -o /tmp/codex-options.json \"<prompt>\" <<'"'"'EOF'"'"'\n## Question / problem\n...\n## Claude'"'"'s analysis\n...\n## Claude'"'"'s position\n...\nEOF` — then present BOTH analyses (yours and codex'"'"'s verdict / position / missed-concerns) in the same response. Skip only when I have already picked, the choice is purely cosmetic, it is a pure fact lookup, or the work is mechanical. If you believe this trigger is a false positive (e.g., recap of a past comparison), say so explicitly in your retry."
 }'

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CodexOptionsReview",
-  "description": "Schema for Codex's independent review of Claude's proposed options or recommended approach. Codex evaluates each option, makes its own pick, and surfaces concerns Claude's analysis missed.",
+  "title": "CodexSecondOpinionReview",
+  "description": "Schema for Codex's independent second-opinion on Claude's analysis. Covers presented options, recommended approaches, technical answers, and design judgments. Codex evaluates Claude's position, gives its own, and surfaces concerns Claude missed. option_assessments is populated only when Claude presented discrete options (null otherwise).",
   "type": "object",
   "required": [
     "verdict",
@@ -15,15 +15,15 @@
   "properties": {
     "verdict": {
       "enum": ["AGREE", "PARTIAL", "DISAGREE"],
-      "description": "AGREE: Codex picks Claude's option for substantively the same reasons. PARTIAL: same option but materially different reasoning, OR a close call between two viable options. DISAGREE: Codex picks a different option (including 'none-of-the-above')."
+      "description": "AGREE: Codex reaches substantively the same position as Claude. PARTIAL: same position but materially different reasoning, OR a close call between two viable positions. DISAGREE: Codex would take a different position (including 'none-of-the-above' when Claude missed a better path)."
     },
     "summary": {
       "type": "string",
       "description": "One short paragraph: Codex's read of the situation and where it agrees / diverges from Claude's framing."
     },
     "option_assessments": {
-      "type": "array",
-      "description": "Per-option assessment for each approach Claude proposed.",
+      "type": ["array", "null"],
+      "description": "Per-option assessment when Claude presented discrete labeled options (Option A/B, Approach 1/2, etc.). null when Claude gave a single recommendation, technical answer, or design judgment without enumerating alternatives.",
       "items": {
         "type": "object",
         "required": ["option_label", "viability", "strengths", "weaknesses"],
@@ -54,7 +54,7 @@
       "properties": {
         "chosen_option": {
           "type": "string",
-          "description": "The option Codex would pick. Use 'none-of-the-above' if Codex thinks Claude missed a better path; describe that path in 'reasoning'."
+          "description": "The position Codex would take: the option Codex picks (when options were enumerated), the approach/answer/judgment Codex endorses, or 'none-of-the-above' when Codex thinks Claude missed a better path. Describe specifics in 'reasoning'."
         },
         "reasoning": { "type": "string" }
       }
@@ -66,7 +66,7 @@
       "properties": {
         "claude_pick": {
           "type": "string",
-          "description": "What Claude recommended (option label, or 'no-recommendation' if Claude only listed options without picking)."
+          "description": "Claude's stated position: option label, recommended approach, technical answer, or 'no-recommendation' if Claude only listed alternatives without picking."
         },
         "matches_codex": { "type": "boolean" },
         "delta": {

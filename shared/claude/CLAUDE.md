@@ -75,8 +75,9 @@ Before editing a project you haven't touched:
 
 Run Codex at **two synchronous checkpoints**:
 
-1. **Options review** — every time you present me options or recommend
-   between approaches (see "Options review" below).
+1. **Second-opinion review** — every time you present me a non-trivial
+   recommendation, options, approach, technical answer, or design
+   judgment (see "Second-opinion review" below).
 2. **Pre-commit review** — every staged diff before commit (see
    "Per-commit workflow" below).
 
@@ -84,52 +85,60 @@ Fix every critical finding before committing or pushing — pushes only
 carry already-passed commits. Codex catches what diff-reread plus
 tests miss; the bar is shipping nothing it would flag.
 
-**Options review (pre-implementation):**
+**Second-opinion review (pre-action):**
 
-Whenever you present me options or recommend between approaches —
-every time, no exceptions — first run codex against your analysis.
-Surface BOTH your read and codex's read so I can decide with two
-opinions. Skip only when I've already picked the option, or the
-choice is purely cosmetic (variable naming, formatter style, etc.).
+Whenever you're about to present me a non-trivial position —
+labeled options to pick between, a recommended approach, a technical
+answer with meaningful trade-offs, or a design judgment — every time,
+no exceptions — first run codex against your analysis. Surface BOTH
+reads so I can decide with two opinions.
 
-Workflow:
+Skip only when:
+- I've already picked the option / decided the approach.
+- The choice is purely cosmetic (variable naming, formatter style).
+- It's a pure fact lookup ("where is X defined?", "what does flag Y
+  mean?") with no judgment involved.
+- The work is mechanical (rename, move, format, lockfile bump).
 
-1. Draft your options / recommendation as text. Write it to
-   `/tmp/claude-options.md` with this structure:
-   ```
-   ## Problem
-   <what I'm being asked to decide>
+Workflow — **one bash call, heredoc for stdin, no tmp file**:
 
-   ## Options
-   ### Option A: <label>
-   <description, trade-offs>
-   ### Option B: <label>
-   ...
+```bash
+codex exec \
+  --sandbox read-only \
+  --skip-git-repo-check \
+  --output-schema ~/.claude/codex-options-review.schema.json \
+  -o /tmp/codex-options.json \
+  "Independently evaluate the analysis in <stdin>. Apply this repo's
+   AGENTS.md (auto-loaded from cwd) if present. Return JSON per
+   schema: verdict AGREE|PARTIAL|DISAGREE, your own position (use
+   'none-of-the-above' if a better path was missed), and any
+   concerns Claude's analysis missed. Populate option_assessments
+   only when Claude presented discrete labeled options; null
+   otherwise." <<'EOF'
+## Question / problem
+<what I'm being asked to decide, answer, or recommend>
 
-   ## Claude's recommendation
-   <which option, why — or "no recommendation" if listing only>
-   ```
+## Claude's analysis
+<reasoning, options if any, trade-offs, evidence>
 
-2. Run codex (read-only). Pass `--skip-git-repo-check` so this works
-   from any cwd, including non-repo dirs:
-   ```bash
-   cat /tmp/claude-options.md | codex exec \
-     --sandbox read-only \
-     --skip-git-repo-check \
-     --output-schema ~/.claude/codex-options-review.schema.json \
-     -o /tmp/codex-options.json \
-     "Independently evaluate the options/approach in <stdin>. Apply
-      this repo's AGENTS.md (auto-loaded from cwd) if present.
-      Return JSON per schema: verdict AGREE|PARTIAL|DISAGREE,
-      per-option assessment, your own recommendation (use
-      'none-of-the-above' if a better path was missed), and any
-      concerns Claude's analysis missed."
-   ```
+## Claude's position
+<recommendation, picked option, answer, or "no position — listing
+only" if you're presenting alternatives without picking>
+EOF
+```
 
-3. Present BOTH analyses to me in the same response: my options and
-   recommendation, then codex's verdict, recommendation, and
-   missed-concerns. Don't filter codex's findings — show
-   disagreements raw, even when codex is wrong, so I can judge.
+Notes:
+- `--skip-git-repo-check` lets this run from any cwd, including
+  non-repo dirs.
+- `<<'EOF'` (quoted) so `$variables` and backticks in the body don't
+  expand — the heredoc content is whatever you typed, verbatim.
+- The collapse from "Write tmp file + cat | codex" to a single bash
+  call cuts one tool roundtrip per review.
+
+Present BOTH analyses in the same response: your analysis and
+position, then codex's verdict, position, and missed-concerns. Don't
+filter codex's findings — show disagreements raw, even when codex is
+wrong, so I can judge.
 
 **Per-commit workflow:**
 
