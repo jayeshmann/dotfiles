@@ -14,12 +14,16 @@ shared/                          # cross-platform — runs on both Mac and WSL
                                    (uses __HOME__ placeholder; bootstrap subs in $HOME)
   claude/
     CLAUDE.md                    → ~/.claude/CLAUDE.md
+    RTK.md                       → ~/.claude/RTK.md          (imported by CLAUDE.md via @RTK.md)
     codex-review.schema.json     → ~/.claude/codex-review.schema.json
     codex-options-review.schema.json → ~/.claude/codex-options-review.schema.json
     settings.json                → ~/.claude/settings.json   (uses $HOME, shell-evaluated)
     bin/                         → ~/.claude/bin/<*.sh>
     skills/<name>/               → ~/.claude/skills/<name>   (or ~/.agents/skills/ on Mac)
-  codex/config.toml              → ~/.codex/config.toml
+  codex/
+    config.toml                  → ~/.codex/config.toml
+    AGENTS.md                    → ~/.codex/AGENTS.md        (auto-loaded by codex; imports @RTK.md)
+    RTK.md                       → ~/.codex/RTK.md
   hermes/config.yaml             → ~/.hermes/config.yaml   (WSL-only; Mac skips)
 wsl/                             # WSL-only
   wezterm.lua                    → /mnt/c/Users/<you>/.wezterm.lua
