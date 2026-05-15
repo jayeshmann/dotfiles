@@ -64,9 +64,7 @@
   },
   "enabledPlugins": {
     "claude-mem@thedotmack": true,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
   },
@@ -75,13 +73,6 @@
       "source": {
         "source": "github",
         "repo": "thedotmack/claude-mem"
-      },
-      "autoUpdate": true
-    },
-    "ui-ux-pro-max-skill": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
       },
       "autoUpdate": true
     }

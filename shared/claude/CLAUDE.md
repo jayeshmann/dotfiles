@@ -289,16 +289,11 @@ Filter discipline:
 If the work is "tell me when X is ready" (one notification, then done), use Bash `run_in_background` with an `until` condition instead — Monitor is for ongoing event streams, not single-shot waits.
 
 ## Plugins
-Active globally: claude-mem, ui-ux-pro-max, frontend-design, context7, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers, commit-commands, code-review, code-simplifier, claude-md-management, security-guidance, claude-code-setup, ralph-loop, and pr-review-toolkit were removed — do NOT try to invoke any of their skills/commands.)
+Active globally: claude-mem, context7, rust-analyzer-lsp, typescript-lsp. Use their skills/commands when they match; don't reinvent what they provide. (Superpowers, commit-commands, code-review, code-simplifier, claude-md-management, security-guidance, claude-code-setup, ralph-loop, pr-review-toolkit, frontend-design, and ui-ux-pro-max were removed; do NOT try to invoke any of their skills/commands.)
 
-**Direct-ask triggers — when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
-- "commit" / "commit and push" / "open PR" / "clean gone branches" → run `git` directly; do NOT skip the codex pre-commit gate above. (No plugin shortcut — the previous `commit-commands:*` skill bypassed codex review and was removed.)
+**Direct-ask triggers, when I ask for the task on the left, use the skill/command on the right. Do not roll your own.**
+- "commit" / "commit and push" / "open PR" / "clean gone branches" → run `git` directly; do NOT skip the codex pre-commit gate above. (No plugin shortcut, the previous `commit-commands:*` skill bypassed codex review and was removed.)
 - TDD / "red-green-refactor" / "test-first" → user skill `tdd` (mattpocock).
-
-**Frontend skill routing — both are installed; pick based on the project:**
-- `frontend-design:frontend-design` (Anthropic) → distinctive aesthetic, marketing/landing/portfolio/consumer/creative work. Forces deliberate visual identity before code.
-- `ui-ux-pro-max:ui-ux-pro-max` (community) → enterprise dashboards, SaaS, design-system-heavy work, multi-stack consistency. Reasoning engine that picks coherent style/palette/typography for a stated product type.
-- For ambiguous/general "make this look better" asks, invoke **both** in sequence: `frontend-design` for the aesthetic decision, then `ui-ux-pro-max` to enforce coherence and accessibility.
 
 ## User-level skills (`~/.claude/skills/`)
 Standalone skills (not plugin-namespaced — invoke via Skill tool by bare name). Match my ask to each skill's `description` field; if it fits, use it.
