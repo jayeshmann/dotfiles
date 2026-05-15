@@ -300,9 +300,20 @@ Standalone skills (not plugin-namespaced — invoke via Skill tool by bare name)
 - **graphify** — any input → knowledge graph. Trigger: `/graphify`
 - **gocomet-fs-ai-part1-reviewer** — score GoComet Nova FS AI Part 1 submissions
 - **mattpocock pack** (current upstream — github.com/mattpocock/skills):
-  - engineering: `diagnose`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-issues`, `to-prd`, `triage`, `zoom-out`
-  - productivity: `caveman`, `grill-me`, `write-a-skill`
+  - engineering: `diagnose`, `grill-with-docs`, `improve-codebase-architecture`, `prototype`, `setup-matt-pocock-skills`, `tdd`, `to-issues`, `to-prd`, `triage`, `zoom-out`
+  - productivity: `caveman`, `grill-me`, `handoff`, `write-a-skill`
   - misc: `git-guardrails-claude-code`, `migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`
+- **vercel-labs pack** (github.com/vercel-labs/skills): `find-skills` — searches for installable skills when I ask "is there a skill for X?" or "find a skill that does Y".
+
+**When to reach for the new entries (already covered by descriptions, listed here so I don't have to remember):**
+- `handoff` — context-budget handoff at ~40% (already required by Workflow above) and any explicit "wrap this up for the next session" / "compact this" ask.
+- `prototype` — any "let me play with it", "mock this up", "try a few designs", or "sanity-check the state machine" ask before committing to a design.
+- `triage` — incoming bug/feature requests, preparing issues for an AFK agent, or any "add this to the tracker" workflow.
+- `diagnose` — hard bugs, intermittent failures, perf regressions; "diagnose this", "debug this", "X is throwing/failing".
+- `tdd` — "TDD this", "red-green-refactor", "test-first", or any feature/bugfix where my Workflow's failing-test-first rule applies.
+- `to-issues` — converting a plan/spec/PRD into independently-grabbable tracer-bullet tickets.
+- `to-prd` — synthesizing the current conversation into a PRD and publishing it to the tracker.
+- `grill-with-docs` — stress-testing a plan against the project's CONTEXT.md / ADRs and updating those docs inline.
 
 When I type `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
 
