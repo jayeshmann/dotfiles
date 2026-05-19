@@ -115,7 +115,10 @@ config.keys = {
   -- Standard copy/paste (Windows expects Ctrl+Shift+C/V in terminals)
   { key = 'c', mods = 'CTRL|SHIFT', action = act.CopyTo  'Clipboard' },
   { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' },
-  { key = 'v', mods = 'CTRL', action = act.PasteFrom 'Clipboard' },
+  -- Plain Ctrl+V is intentionally left unbound so the 0x16 keystroke
+  -- passes through to the running app. Claude Code needs it to trigger
+  -- its clipboard image-paste (screenshot) handler; binding it here
+  -- would swallow the key and break screenshot paste.
   { key = 'Enter', mods = 'SHIFT', action = wezterm.action.SendString '\x1b\r' },
   -- One-handed pane management (no leader needed)
 { key = 'd', mods = 'CTRL|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
