@@ -303,7 +303,6 @@ Standalone skills (not plugin-namespaced — invoke via Skill tool by bare name)
   - engineering: `diagnose`, `grill-with-docs`, `improve-codebase-architecture`, `prototype`, `setup-matt-pocock-skills`, `tdd`, `to-issues`, `to-prd`, `triage`, `zoom-out`
   - productivity: `caveman`, `grill-me`, `handoff`, `write-a-skill`
   - misc: `git-guardrails-claude-code`, `migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`
-- **vercel-labs pack** (github.com/vercel-labs/skills): `find-skills` — searches for installable skills when I ask "is there a skill for X?" or "find a skill that does Y".
 
 **When to reach for the new entries (already covered by descriptions, listed here so I don't have to remember):**
 - `handoff` — context-budget handoff at ~40% (already required by Workflow above) and any explicit "wrap this up for the next session" / "compact this" ask.
