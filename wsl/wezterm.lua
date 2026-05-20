@@ -115,10 +115,17 @@ config.keys = {
   -- Standard copy/paste (Windows expects Ctrl+Shift+C/V in terminals)
   { key = 'c', mods = 'CTRL|SHIFT', action = act.CopyTo  'Clipboard' },
   { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' },
-  -- Plain Ctrl+V is intentionally left unbound so the 0x16 keystroke
-  -- passes through to the running app. Claude Code needs it to trigger
-  -- its clipboard image-paste (screenshot) handler; binding it here
-  -- would swallow the key and break screenshot paste.
+  -- Plain Ctrl+V: paste text via bracketed paste AND send raw 0x16 so
+  -- Claude Code's Win-clipboard image-paste handler runs. Always-on
+  -- because WezTerm on Windows can't introspect WSL processes; it only
+  -- sees `wslhost.exe`, so we can't scope this binding to Claude Code
+  -- panes. Tradeoff: in zsh `Ctrl+V` pastes then enters quoted-insert
+  -- mode; in vim insert mode it pastes then waits for a literal char.
+  -- Use Ctrl+Shift+V for vanilla paste with no trailing 0x16.
+  { key = 'v', mods = 'CTRL', action = act.Multiple {
+    act.PasteFrom 'Clipboard',
+    act.SendString '\x16',
+  } },
   { key = 'Enter', mods = 'SHIFT', action = wezterm.action.SendString '\x1b\r' },
   -- One-handed pane management (no leader needed)
 { key = 'd', mods = 'CTRL|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
