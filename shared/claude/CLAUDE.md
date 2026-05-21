@@ -43,6 +43,7 @@ Loaded every session. Keep UNIVERSAL — project CLAUDE.md overrides this file.
 ## Tool preferences
 - Prefer CLI over MCP: `gh` (GitHub), `psql` (Postgres), `kubectl` (k8s), `aws`/`gcloud`/`az` (cloud), `docker` (containers).
 - Prefer `rg` over reading files blindly. Prefer `fd` over `find`. Use `bat` for syntax-highlighted output you want me to read.
+- Never use `npm` or `yarn` for installs in this account. Use bun for greenfield/solo projects; pnpm for any repo with an existing pnpm-lock.yaml; convert npm/yarn repos to pnpm via `pnpm import` on first touch.
 
 ## Research
 When I ask you to research anything (products, tools, libraries, frameworks, services, design choices, technical decisions), official sources alone are insufficient. Always cross-check community signal:
