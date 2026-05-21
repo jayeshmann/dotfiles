@@ -53,12 +53,15 @@ fi
 codex_called=$(jq -rs '
   map(select(.type=="assistant"))
   | reverse
-  | .[0:8]
+  | .[0:30]
   | map(.message.content // [])
   | flatten
   | map(select(.type=="tool_use" and .name=="Bash"))
   | map(.input.command // "")
-  | map(select(test("codex[ \\\\\\n]+exec"; "s") and contains("codex-review.schema.json")))
+  | map(select(
+      (test("codex[ \\\\\\n]+exec"; "s") and contains("codex-review.schema.json"))
+      or contains("codex-precommit.sh")
+    ))
   | length
 ' "$transcript_path" 2>/dev/null || echo 0)
 
@@ -69,5 +72,5 @@ fi
 # Block the commit and explain.
 jq -n '{
   decision: "block",
-  reason: "Pre-commit codex review gate: you are about to run `git commit` without having run codex pre-commit review in recent turns. Per ~/.claude/CLAUDE.md (External code review (Codex) > Per-commit workflow): self-review the staged diff, then build the context bundle (CONVERSATION transcript + git diff --cached) and run codex exec --sandbox read-only --output-schema ~/.claude/codex-review.schema.json -o /tmp/codex-review.json. Triage the JSON verdict (APPROVED commits; REVISE means fix real issues). Hard cap of 2 round-trips. Skip ONLY for: pure-formatter commits (make fmt-only), lockfile bumps with no code changes, non-runbook doc typo fixes, or generated-file-only commits whose source change you already pushed through review. If skip applies, say so in your retry and commit again."
+  reason: "Pre-commit codex review gate: you are about to run `git commit` without having run codex pre-commit review in recent turns. Per ~/.claude/CLAUDE.md (External code review (Codex) > Per-commit workflow): self-review the staged diff, then run `~/.claude/bin/codex-precommit.sh` (it bundles the session transcript + git diff --cached, calls codex with the schema, and writes the verdict to /tmp/codex-review.json). Triage the JSON verdict (APPROVED commits; REVISE means fix real issues). Hard cap of 2 round-trips. Skip ONLY for: pure-formatter commits (make fmt-only), lockfile bumps with no code changes, non-runbook doc typo fixes, or generated-file-only commits whose source change you already pushed through review. If skip applies, say so in your retry and commit again."
 }'

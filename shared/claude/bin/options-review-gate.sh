@@ -71,12 +71,15 @@ fi
 codex_called=$(jq -rs '
   map(select(.type=="assistant"))
   | reverse
-  | .[0:5]
+  | .[0:20]
   | map(.message.content // [])
   | flatten
   | map(select(.type=="tool_use" and .name=="Bash"))
   | map(.input.command // "")
-  | map(select(test("codex[ \\\\\\n]+exec"; "s") and contains("codex-options-review.schema.json")))
+  | map(select(
+      (test("codex[ \\\\\\n]+exec"; "s") and contains("codex-options-review.schema.json"))
+      or contains("codex-second-opinion.sh")
+    ))
   | length
 ' "$transcript_path" 2>/dev/null || echo 0)
 
@@ -87,5 +90,5 @@ fi
 # Gate: block the turn and instruct Claude to run codex second-opinion first.
 jq -n '{
   decision: "block",
-  reason: "Second-opinion gate: your last message presents labeled options and a recommendation, but no codex second-opinion ran in this turn. Per ~/.claude/CLAUDE.md (External code review (Codex) > Second-opinion review (pre-action)): run codex in ONE bash call using a heredoc — `codex exec --sandbox read-only --skip-git-repo-check --output-schema ~/.claude/codex-options-review.schema.json -o /tmp/codex-options.json \"<prompt>\" <<'"'"'EOF'"'"'\n## Question / problem\n...\n## Claude'"'"'s analysis\n...\n## Claude'"'"'s position\n...\nEOF` — then present BOTH analyses (yours and codex'"'"'s verdict / position / missed-concerns) in the same response. Skip only when I have already picked, the choice is purely cosmetic, it is a pure fact lookup, or the work is mechanical. If you believe this trigger is a false positive (e.g., recap of a past comparison), say so explicitly in your retry."
+  reason: "Second-opinion gate: your last message presents labeled options and a recommendation, but no codex second-opinion ran in this turn. Per ~/.claude/CLAUDE.md (External code review (Codex) > Second-opinion review (pre-action)): pipe the analysis bundle into `~/.claude/bin/codex-second-opinion.sh` via a quoted heredoc, e.g. `~/.claude/bin/codex-second-opinion.sh <<'"'"'EOF'"'"'\n## Question / problem\n...\n## Claude'"'"'s analysis\n...\n## Claude'"'"'s position\n...\nEOF`. Then present BOTH analyses (yours and codex'"'"'s verdict / position / missed-concerns) in the same response. Skip only when I have already picked, the choice is purely cosmetic, it is a pure fact lookup, or the work is mechanical. If you believe this trigger is a false positive (e.g., recap of a past comparison), say so explicitly in your retry."
 }'
