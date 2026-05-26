@@ -97,7 +97,7 @@ fi
 # ────── fzf keybindings ─────────────────────────────────────────────────────
 # Idempotent: re-running `eval "$(fzf --zsh)"` just re-registers the widgets,
 # no harm if ~/.zshrc already does it.
-if command -v fzf >/dev/null 2>&1 && fzf --zsh >/dev/null 2>&1; then
+if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1 && fzf --zsh >/dev/null 2>&1; then
   eval "$(fzf --zsh)"
 fi
 
