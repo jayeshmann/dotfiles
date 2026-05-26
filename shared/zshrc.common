@@ -47,6 +47,12 @@ if [[ "$DOTFILES_OS" == "mac" ]]; then
   fi
 fi
 
+# User-local tools. Keep this after any cmux-injected bin directory so cmux can
+# wrap Claude Code inside cmux terminals while still finding the real binary.
+if [[ -d "$HOME/.local/bin" && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
 # ────── History ─────────────────────────────────────────────────────────────
 HISTFILE=~/.zsh_history
 HISTSIZE=50000
