@@ -194,14 +194,11 @@ Active globally: claude-mem, context7, rust-analyzer-lsp, typescript-lsp. Use th
 
 ## User-level skills (`~/.claude/skills/`)
 Standalone skills (not plugin-namespaced; invoke via Skill tool by bare name). Match my ask to each skill's `description` field; if it fits, use it.
-- **graphify**; any input → knowledge graph. Trigger: `/graphify`
 - **gocomet-fs-ai-part1-reviewer**; score GoComet Nova FS AI Part 1 submissions
 - **mattpocock pack** (current upstream; github.com/mattpocock/skills):
   - engineering: `diagnose`, `grill-with-docs`, `improve-codebase-architecture`, `prototype`, `setup-matt-pocock-skills`, `tdd`, `to-issues`, `to-prd`, `triage`, `zoom-out`
   - productivity: `caveman`, `grill-me`, `handoff`, `write-a-skill`
   - misc: `git-guardrails-claude-code`, `migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`
-
-When I type `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
 
 ## Pentest tooling
 `hackingtool` (Z4nzu/hackingtool) installs to `/usr/share/hackingtool` with launcher `/usr/bin/hackingtool` and user config in `~/.hackingtool/`. Use **only** during authorized pentest engagements I have explicitly scoped. Never run any included tool against a target I have not named as in-scope. Treat output as sensitive; do not paste credentials, hashes, or scan results into chat platforms or commits.
