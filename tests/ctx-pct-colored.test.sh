@@ -54,6 +54,16 @@ assert_eq() {
   fi
 }
 
+# Like run_widget but with a context_window.used_percentage field. $2 is raw
+# JSON for the field value — pass 8.54 for a number, '"45"' for a string,
+# null for null.
+run_widget_cw() {
+  local transcript="$1" used_pct="$2" model_id="${3:-claude-opus-4-7[1m]}"
+  printf '{"transcript_path":"%s","model":{"id":"%s"},"context_window":{"used_percentage":%s}}' "$transcript" "$model_id" "$used_pct" \
+    | bash "$SCRIPT" \
+    | awk '{ gsub(/\033\[[0-9;]*m/, ""); printf "%s", $0 }'
+}
+
 # Emit a single assistant usage JSONL line. Args: ts, isSidechain, total_tokens.
 # Total goes into cache_read_input_tokens so input_tokens=0 keeps the math
 # clean (no off-by-one rounding noise in assertions).
@@ -108,6 +118,26 @@ assert_eq "malformed-line-survives" \
 entry "2026-05-13T11:00:00.000Z" false 40000 > "$TMP/200k.jsonl"
 assert_eq "200k-context-window" \
   "$(run_widget "$TMP/200k.jsonl" "claude-sonnet-4-5")" "25.0%"
+
+# 8) context_window.used_percentage present → used directly. CC computes it
+# against the model's REAL window, so it must win over transcript math even
+# when they disagree (transcript fallback guesses 200k/1m from the model id —
+# wrong for 1M-window models like claude-fable-5 whose id lacks "1m").
+entry "2026-05-13T11:00:00.000Z" false 400000 > "$TMP/cw-ignored.jsonl"  # fallback would say 50.0%
+assert_eq "used-percentage-direct" \
+  "$(run_widget_cw "$TMP/cw-ignored.jsonl" 8.54)" "8.5%"
+
+# 9) String-coerced used_percentage (CC's schema allows string numbers).
+assert_eq "used-percentage-string" \
+  "$(run_widget_cw "$TMP/cw-ignored.jsonl" '"45"')" "45.0%"
+
+# 10) used_percentage above 100 clamps, matching fallback behaviour.
+assert_eq "used-percentage-clamped" \
+  "$(run_widget_cw "$TMP/cw-ignored.jsonl" 250)" "100.0%"
+
+# 11) null used_percentage → transcript fallback math still applies.
+assert_eq "used-percentage-null-fallback" \
+  "$(run_widget_cw "$TMP/cw-ignored.jsonl" null)" "50.0%"
 
 echo
 if (( FAIL > 0 )); then
